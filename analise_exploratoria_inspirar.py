@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import os
+import base64 # Importante para essa solução
 
 # --- 1. DEFINIÇÃO DAS CORES (Identidade Visual) ---
 PRIMARY_PURPLE = "#6A0DAD"   # Roxo Forte
@@ -40,7 +41,7 @@ st.markdown(f"""
         [data-testid="collapsedControl"] {{
             display: none;
         }}
-        /* Garante que o H1 (onde está o logo) fique roxo */
+        /* Força a cor roxa em textos gerais */
         h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{
             color: {PRIMARY_PURPLE} !important;
         }}
@@ -65,15 +66,37 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- TÍTULO COM LOGO INTEGRADO (USANDO HTML) ---
-# Usamos HTML para colocar a imagem na mesma linha do texto.
-# Ajuste o 'width' (160px) se quiser aumentar ou diminuir o logo.
-st.markdown(f"""
-    <h1>
-        📊 Dashboard de Engajamento - 
-        <img src="logo-with-name-D8Yx5pPt.png" alt="Inspirar Logo" style="width: 160px; vertical-align: middle; margin-bottom: 8px;">
-    </h1>
-""", unsafe_allow_html=True)
+# --- FUNÇÃO AUXILIAR: Converter imagem para Base64 ---
+def get_img_as_base64(file_path):
+    """Lê uma imagem local e retorna uma string base64 para embedar no HTML."""
+    try:
+        with open(file_path, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except Exception as e:
+        st.error(f"Erro ao processar imagem: {e}")
+        return None
+
+# --- CABEÇALHO HÍBRIDO (Texto + Imagem Inline) ---
+IMG_PATH = "logo-with-name-D8Yx5pPt.png"
+
+if os.path.exists(IMG_PATH):
+    img_base64 = get_img_as_base64(IMG_PATH)
+    if img_base64:
+        # Cria um container flexbox para alinhar texto e imagem na mesma linha
+        header_html = f"""
+            <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                <h1 style="margin: 0; padding-right: 10px; color: {PRIMARY_PURPLE};">
+                    📊 Dashboard de Engajamento - 
+                </h1>
+                <img src="data:image/png;base64,{img_base64}" alt="Inspirar Logo" style="height: 60px;">
+            </div>
+        """
+        st.markdown(header_html, unsafe_allow_html=True)
+else:
+    # Fallback caso a imagem não exista
+    st.title("📊 Dashboard de Engajamento - App Inspirar (Imagem não encontrada)")
+    st.warning(f"A imagem '{IMG_PATH}' não foi encontrada na pasta do script.")
 
 st.markdown("---") 
 
