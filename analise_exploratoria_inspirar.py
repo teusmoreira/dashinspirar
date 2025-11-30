@@ -7,10 +7,10 @@ import numpy as np
 import base64
 import os
 
-# --- 1. DEFINIÇÃO DAS CORES (Identidade Visual) ---
-PRIMARY_PURPLE = "#6A0DAD"   # Roxo Forte
-SECONDARY_PURPLE = "#9B59B6" # Roxo Médio
-LIGHT_BG = "#FFFFFF"         # Branco
+# --- 1. DEFINIÇÃO DAS CORES ---
+PRIMARY_PURPLE = "#6A0DAD"
+SECONDARY_PURPLE = "#9B59B6"
+LIGHT_BG = "#FFFFFF"
 
 # --- 2. CONFIGURAÇÃO DOS GRÁFICOS ---
 plt.rcParams.update({
@@ -32,45 +32,20 @@ PURPLE_PALETTE = sns.light_palette(PRIMARY_PURPLE, n_colors=5, reverse=True, inp
 # --- 3. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Dashboard Inspirar", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 4. CSS (Tema Claro/Roxo) ---
+# --- 4. CSS ---
 st.markdown(f"""
     <style>
-        .stApp, header[data-testid="stHeader"] {{
-            background-color: {LIGHT_BG} !important;
-        }}
-        [data-testid="collapsedControl"] {{
-            display: none;
-        }}
-        /* Tira margens padrão do H1 para alinhar melhor */
-        h1 {{
-            padding: 0px !important;
-            margin: 0px !important;
-        }}
-        h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{
-            color: {PRIMARY_PURPLE} !important;
-        }}
-        .stTabs [data-baseweb="tab"] {{
-            color: {PRIMARY_PURPLE} !important;
-            background-color: white !important;
-        }}
-        .stTabs [aria-selected="true"] {{
-            border-bottom-color: {PRIMARY_PURPLE} !important;
-            font-weight: bold !important;
-        }}
-        [data-testid="stMetric"] {{
-            background-color: #F8F0FF !important;
-            border: 1px solid {SECONDARY_PURPLE};
-            border-radius: 8px;
-            padding: 10px;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
-        }}
-        [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{
-            color: {PRIMARY_PURPLE} !important;
-        }}
+        .stApp, header[data-testid="stHeader"] {{ background-color: {LIGHT_BG} !important; }}
+        [data-testid="collapsedControl"] {{ display: none; }}
+        h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{ color: {PRIMARY_PURPLE} !important; }}
+        .stTabs [data-baseweb="tab"] {{ color: {PRIMARY_PURPLE} !important; background-color: white !important; }}
+        .stTabs [aria-selected="true"] {{ border-bottom-color: {PRIMARY_PURPLE} !important; font-weight: bold !important; }}
+        [data-testid="stMetric"] {{ background-color: #F8F0FF !important; border: 1px solid {SECONDARY_PURPLE}; border-radius: 8px; padding: 10px; }}
+        [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{ color: {PRIMARY_PURPLE} !important; }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNÇÃO PARA CONVERTER IMAGEM LOCAL EM HTML ---
+# --- 5. FUNÇÃO PARA CONVERTER IMAGEM PARA HTML ---
 def get_img_as_base64(file):
     try:
         with open(file, "rb") as f:
@@ -79,26 +54,27 @@ def get_img_as_base64(file):
     except:
         return None
 
-# --- CABEÇALHO PERFEITO (HTML Flexbox) ---
+# --- 6. TÍTULO HÍBRIDO (TEXTO + IMAGEM NA MESMA LINHA) ---
 logo_path = "logo-with-name-D8Yx5pPt.png"
 img_b64 = get_img_as_base64(logo_path)
 
 if img_b64:
-    # Se a imagem existe, monta o HTML com a imagem AO LADO do texto
-    header_html = f"""
-    <div style="display: flex; align-items: center; justify-content: flex-start; gap: 15px;">
-        <h1 style="color: {PRIMARY_PURPLE}; margin: 0;">📊 Dashboard de Engajamento - </h1>
-        <img src="data:image/png;base64,{img_b64}" style="height: 50px; margin-top: 5px;">
+    # HTML Flexbox para alinhar Texto e Imagem lado a lado
+    st.markdown(f"""
+    <div style="display: flex; align-items: center; margin-bottom: 20px;">
+        <h1 style="margin: 0; padding-right: 10px; color: {PRIMARY_PURPLE}; font-size: 3rem;">
+            📊 Dashboard de Engajamento - 
+        </h1>
+        <img src="data:image/png;base64,{img_b64}" style="height: 60px; margin-top: 8px;">
     </div>
-    """
-    st.markdown(header_html, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 else:
-    # Se não achar a imagem, mostra só o texto
+    # Caso a imagem falhe, mostra texto normal
     st.title("📊 Dashboard de Engajamento - App Inspirar")
 
-st.markdown("---") 
+st.markdown("---")
 
-# --- CONFIGURAÇÃO DOS DADOS ---
+# --- 7. CARREGAMENTO DE DADOS ---
 LOCAL_PATH = "pacientes_marco-julho_com_createdAt_com_sexo_sigla_filtrado.json"
 
 @st.cache_data
@@ -106,10 +82,10 @@ def load_data(file_path):
     try:
         with open(file_path, "r", encoding="utf-8") as dataset:
             data = json.load(dataset)
-
+        
         pacientes = pd.json_normalize(data["data"]["result"])
         
-        # --- TRATAMENTO ---
+        # Tratamentos
         pacientes["createdAt"] = pd.to_datetime(pacientes["createdAt"], errors="coerce")
         pacientes["height"] = pacientes["height"].astype(str).str.replace(',', '.')
         pacientes["height"] = pd.to_numeric(pacientes["height"], errors='coerce')
@@ -129,14 +105,11 @@ def load_data(file_path):
 
 # --- CARREGAMENTO ---
 df = None
-try:
+if os.path.exists(LOCAL_PATH):
     df = load_data(LOCAL_PATH)
-except:
-    pass
 
 # --- VISUALIZAÇÃO ---
 if df is not None:
-    
     col1, col2, col3 = st.columns(3)
     total_pacientes = len(df)
     ativos = df[df["engagement_score"] > 0].copy()
@@ -153,7 +126,6 @@ if df is not None:
     else:
         tab1, tab2, tab3, tab4 = st.tabs(["Visão Geral", "Perfil", "Temporal", "Correlações"])
 
-        # Aba 1
         with tab1:
             c1, c2 = st.columns(2)
             with c1:
@@ -163,8 +135,7 @@ if df is not None:
                 for p in ax1.patches:
                     if p.get_height() > 0:
                         ax1.annotate(f'{int(p.get_height())}', (p.get_x() + p.get_width() / 2., p.get_height()),
-                                     ha='center', va='bottom', fontsize=9, color=PRIMARY_PURPLE, xytext=(0, 2),
-                                     textcoords='offset points')
+                                     ha='center', va='bottom', fontsize=9, color=PRIMARY_PURPLE, xytext=(0, 2), textcoords='offset points')
                 plt.xlabel("Total Interações")
                 plt.ylabel("Qtd")
                 sns.despine()
@@ -180,7 +151,6 @@ if df is not None:
                 sns.despine()
                 st.pyplot(fig2, transparent=False)
 
-        # Aba 2
         with tab2:
             st.markdown("##### Análise de Gênero")
             df['sex_label'] = df['sex'].replace({'M': 'Masculino', 'F': 'Feminino'})
@@ -238,7 +208,6 @@ if df is not None:
             sns.despine()
             st.pyplot(fig5, transparent=False)
 
-        # Aba 3
         with tab3:
             Funcs = {"Sintomas": "symptomDiaries", "ACQ": "acqs", "Meds": "prescriptions", "Ativ.": "activityLogs"}
             lista_log = []
@@ -289,11 +258,10 @@ if df is not None:
                         plt.ylabel("")
                         st.pyplot(fig_h, transparent=False)
                     else:
-                        st.info("Apenas dados sem horário encontrados.")
+                        st.info("Apenas dados sem horário (00:00) encontrados.")
             else:
                 st.info("Sem dados temporais.")
 
-        # Aba 4
         with tab4:
             st.markdown("##### Dispersão: Idade vs Engajamento")
             df_c = df[(df["engagement_score"] > 0) & (df["age"].notna())].copy()
@@ -315,4 +283,4 @@ if df is not None:
             else:
                 st.warning("Dados insuficientes.")
 else:
-    st.error(f"Erro: Arquivo '{LOCAL_PATH}' não encontrado na pasta.")
+    st.error(f"Erro: O arquivo '{LOCAL_PATH}' não foi encontrado.")
