@@ -90,23 +90,15 @@ def load_data(file_input):
         pacientes = pd.json_normalize(data["data"]["result"])
         
         # --- TRATAMENTO DE DADOS ---
-        
         # 1. Datas
         pacientes["createdAt"] = pd.to_datetime(pacientes["createdAt"], errors="coerce")
         
-        # 2. CORREÇÃO DE ALTURA (Limpeza Robusta)
-        # Converte para string primeiro para corrigir possíveis vírgulas (1,65 -> 1.65)
+        # 2. Altura
         pacientes["height"] = pacientes["height"].astype(str).str.replace(',', '.')
-        # Converte para numérico
         pacientes["height"] = pd.to_numeric(pacientes["height"], errors='coerce')
-        # Normalização: Se altura > 3 metros, assume cm e divide por 100. Senão, mantém.
-        pacientes["height"] = np.where(
-            pacientes["height"] > 3, 
-            pacientes["height"] / 100, 
-            pacientes["height"]
-        )
+        pacientes["height"] = np.where(pacientes["height"] > 3, pacientes["height"] / 100, pacientes["height"])
         
-        # 3. Scores e Contagens
+        # 3. Scores
         pacientes["n_symptoms"] = pacientes["symptomDiaries"].apply(len)
         pacientes["n_acqs"] = pacientes["acqs"].apply(len)
         pacientes["n_prescriptions"] = pacientes["prescriptions"].apply(len)
@@ -189,7 +181,6 @@ if raw_df is not None:
                 st.markdown("##### Distribuição")
                 fig1 = plt.figure(figsize=(8, 4))
                 ax1 = sns.histplot(df["engagement_score"], bins=20, color=PRIMARY_PURPLE, kde=True)
-                # Rótulos
                 for p in ax1.patches:
                     if p.get_height() > 0:
                         ax1.annotate(f'{int(p.get_height())}', (p.get_x() + p.get_width() / 2., p.get_height()),
@@ -270,7 +261,7 @@ if raw_df is not None:
             sns.despine()
             st.pyplot(fig5, transparent=False)
 
-        # Aba 3: Temporal (FUSO HORÁRIO CORRIGIDO)
+        # Aba 3: Temporal (CORRIGIDO: Filtra 00:00)
         with tab3:
             Funcs = {"Sintomas": "symptomDiaries", "ACQ": "acqs", "Meds": "prescriptions", "Ativ.": "activityLogs"}
             lista_log = []
@@ -281,11 +272,11 @@ if raw_df is not None:
                         for log in row[col]:
                             d = pd.to_datetime(log.get('createdAt'), errors='coerce')
                             if pd.notnull(d):
-                                # Fix Timezone
+                                # Fix Timezone (UTC -> BRT)
                                 if d.tz is None: d = d.tz_localize('UTC')
                                 d = d.tz_convert('America/Sao_Paulo')
                                 
-                                # Filtro
+                                # Filtro de data da sidebar
                                 in_range = False
                                 if isinstance(date_range, list) and len(date_range) == 2:
                                     if start_date <= d.date() <= end_date: in_range = True
@@ -305,7 +296,6 @@ if raw_df is not None:
                     fig6 = plt.figure(figsize=(8, 4))
                     ax6 = sns.lineplot(data=df_l.groupby(['Mês', 'Func']).size().reset_index(name='T'), 
                                        x='Mês', y='T', hue='Func', marker='o', palette=PURPLE_PALETTE)
-                    # Label nos pontos
                     for line in ax6.lines:
                         for x_val, y_val in zip(line.get_xdata(), line.get_ydata()):
                             ax6.text(x_val, y_val, f'{int(y_val)}', color=PRIMARY_PURPLE, fontsize=8)
@@ -313,28 +303,38 @@ if raw_df is not None:
                     sns.despine()
                     st.pyplot(fig6, transparent=False)
                 with c_F:
-                    st.markdown("##### Heatmap (Horário de Brasília)")
-                    mapa_dias = {'Monday':'Seg','Tuesday':'Ter','Wednesday':'Qua','Thursday':'Qui','Friday':'Sex','Saturday':'Sáb','Sunday':'Dom'}
-                    df_l['dia'] = df_l['date'].dt.day_name().map(mapa_dias)
-                    ordem_dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
-                    df_l['dia'] = pd.Categorical(df_l['dia'], categories=ordem_dias, ordered=True)
-                    df_l['hora'] = df_l['date'].dt.hour
+                    st.markdown("##### Heatmap (Sem registros de 00:00)")
                     
-                    hm = df_l.groupby(['dia', 'hora']).size().unstack(fill_value=0)
-                    for h in range(24):
-                        if h not in hm.columns: hm[h] = 0
-                    hm = hm.sort_index(axis=1)
+                    # FILTRO CRÍTICO: Remove qualquer registro que seja exatamente 0h
+                    # (Assume-se que registros à meia-noite exata são datas sem horário)
+                    df_hm = df_l[df_l['date'].dt.hour != 0].copy()
+                    
+                    if not df_hm.empty:
+                        mapa_dias = {'Monday':'Seg','Tuesday':'Ter','Wednesday':'Qua','Thursday':'Qui','Friday':'Sex','Saturday':'Sáb','Sunday':'Dom'}
+                        df_hm['dia'] = df_hm['date'].dt.day_name().map(mapa_dias)
+                        ordem_dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+                        df_hm['dia'] = pd.Categorical(df_hm['dia'], categories=ordem_dias, ordered=True)
+                        df_hm['hora'] = df_hm['date'].dt.hour
+                        
+                        hm = df_hm.groupby(['dia', 'hora']).size().unstack(fill_value=0)
+                        
+                        # Garante que o eixo X mostre de 0 a 23, mesmo que o 0 esteja vazio
+                        for h in range(24):
+                            if h not in hm.columns: hm[h] = 0
+                        hm = hm.sort_index(axis=1)
 
-                    fig_h = plt.figure(figsize=(8, 4))
-                    cmap_purple = sns.light_palette(PRIMARY_PURPLE, as_cmap=True)
-                    sns.heatmap(hm, cmap=cmap_purple, cbar_kws={'label': 'Interações'}, linewidths=0.5, linecolor='white')
-                    plt.xlabel("Hora")
-                    plt.ylabel("")
-                    st.pyplot(fig_h, transparent=False)
+                        fig_h = plt.figure(figsize=(8, 4))
+                        cmap_purple = sns.light_palette(PRIMARY_PURPLE, as_cmap=True)
+                        sns.heatmap(hm, cmap=cmap_purple, cbar_kws={'label': 'Interações'}, linewidths=0.5, linecolor='white')
+                        plt.xlabel("Hora")
+                        plt.ylabel("")
+                        st.pyplot(fig_h, transparent=False)
+                    else:
+                        st.info("Atenção: Todos os registros encontrados estavam marcados como 00:00 (provavelmente datas sem horário).")
             else:
                 st.info("Sem dados temporais.")
 
-        # Aba 4: Correlação (Scatter Plot)
+        # Aba 4: Correlação
         with tab4:
             st.markdown("##### Dispersão: Idade vs Engajamento")
             df_c = df[(df["engagement_score"] > 0) & (df["age"].notna())].copy()
