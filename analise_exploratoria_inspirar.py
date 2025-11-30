@@ -60,19 +60,30 @@ st.markdown(f"""
         [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{
             color: {PRIMARY_PURPLE} !important;
         }}
+        
+        /* Ajuste fino para o Título do Header */
+        h1 {{
+            padding-top: 0px !important;
+            margin-top: 20px !important; /* Alinha visualmente com a logo */
+        }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- CABEÇALHO (LOGOTIPO MENOR + TÍTULO) ---
-try:
-    # AJUSTE AQUI: width=350 define um tamanho fixo em pixels.
-    # Altere este valor se quiser maior ou menor.
-    st.image("logo-with-name-D8Yx5pPt.png", width=350)
-except Exception as e:
-    pass
+# --- CABEÇALHO (HEADER: LOGO + TÍTULO) ---
+# Cria duas colunas: Uma para o Logo (menor) e uma para o Título (maior)
+col_header_logo, col_header_text = st.columns([1, 4]) 
 
-# Título original com o emoji
-st.title("📊 Dashboard de Engajamento - App Inspirar")
+with col_header_logo:
+    try:
+        # Logo com tamanho ajustado para parecer um ícone de app/header
+        st.image("logo-with-name-D8Yx5pPt.png", width=220)
+    except:
+        st.warning("Imagem não encontrada")
+
+with col_header_text:
+    # Título do Dashboard ao lado
+    st.title("Dashboard de Engajamento")
+    st.markdown("**Visão analítica dos pacientes e uso do aplicativo**")
 
 st.markdown("---") 
 
