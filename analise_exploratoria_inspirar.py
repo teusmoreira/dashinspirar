@@ -32,20 +32,7 @@ plt.rcParams.update({
 
 PURPLE_PALETTE = sns.light_palette(PRIMARY_PURPLE, n_colors=5, reverse=True, input="hex")
 
-# --- 4. CSS GLOBAL ---
-st.markdown(f"""
-    <style>
-        .stApp, header[data-testid="stHeader"] {{ background-color: {LIGHT_BG} !important; }}
-        [data-testid="collapsedControl"] {{ display: none; }}
-        h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{ color: {PRIMARY_PURPLE} !important; }}
-        .stTabs [data-baseweb="tab"] {{ color: {PRIMARY_PURPLE} !important; background-color: white !important; }}
-        .stTabs [aria-selected="true"] {{ border-bottom-color: {PRIMARY_PURPLE} !important; font-weight: bold !important; }}
-        [data-testid="stMetric"] {{ background-color: #F8F0FF !important; border: 1px solid {SECONDARY_PURPLE}; border-radius: 8px; padding: 10px; }}
-        [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{ color: {PRIMARY_PURPLE} !important; }}
-    </style>
-""", unsafe_allow_html=True)
-
-# --- 5. CABEÇALHO CORRIGIDO (TEXTO + IMAGEM NA MESMA LINHA) ---
+# --- 4. PREPARAÇÃO DA IMAGEM PARA O CSS ---
 def get_img_as_base64(file):
     try:
         with open(file, "rb") as f:
@@ -57,22 +44,40 @@ def get_img_as_base64(file):
 logo_path = "logo-with-name-D8Yx5pPt.png"
 img_b64 = get_img_as_base64(logo_path)
 
+# Define o CSS da imagem apenas se ela existir
+header_bg_css = ""
 if img_b64:
-    # AQUI ESTÁ A CORREÇÃO:
-    # Um único bloco HTML que segura o Texto e a Imagem lado a lado (flexbox).
-    st.markdown(f"""
-    <div style="display: flex; align-items: center; margin-top: -20px; margin-bottom: 20px;">
-        <h1 style="margin: 0; padding-right: 15px; color: {PRIMARY_PURPLE}; font-size: 2.5rem; white-space: nowrap;">
-            📊 Dashboard de Engajamento - 
-        </h1>
-        <img src="data:image/png;base64,{img_b64}" style="height: 60px;">
-    </div>
-    """, unsafe_allow_html=True)
-else:
-    # Fallback se a imagem não carregar
-    st.title("📊 Dashboard de Engajamento - App Inspirar")
+    header_bg_css = f"""
+    header[data-testid="stHeader"] {{
+        background-image: url("data:image/png;base64,{img_b64}");
+        background-repeat: no-repeat;
+        background-position: center center; /* Centraliza a logo no cabeçalho */
+        background-size: auto 60%; /* Ajusta o tamanho (60% da altura da barra) */
+        background-color: {LIGHT_BG} !important;
+    }}
+    """
 
-st.markdown("---")
+# --- 5. CSS GERAL + INJEÇÃO DO LOGO NO HEADER ---
+st.markdown(f"""
+    <style>
+        /* Aplica o fundo e o logo na barra superior */
+        {header_bg_css}
+        
+        .stApp {{ background-color: {LIGHT_BG} !important; }}
+        
+        /* Ajusta o espaço para o conteúdo não ficar escondido atrás do header */
+        .block-container {{
+            padding-top: 3rem !important; 
+        }}
+
+        [data-testid="collapsedControl"] {{ display: none; }}
+        h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{ color: {PRIMARY_PURPLE} !important; }}
+        .stTabs [data-baseweb="tab"] {{ color: {PRIMARY_PURPLE} !important; background-color: white !important; }}
+        .stTabs [aria-selected="true"] {{ border-bottom-color: {PRIMARY_PURPLE} !important; font-weight: bold !important; }}
+        [data-testid="stMetric"] {{ background-color: #F8F0FF !important; border: 1px solid {SECONDARY_PURPLE}; border-radius: 8px; padding: 10px; }}
+        [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{ color: {PRIMARY_PURPLE} !important; }}
+    </style>
+""", unsafe_allow_html=True)
 
 # --- 6. CARREGAMENTO DE DADOS ---
 LOCAL_PATH = "pacientes_marco-julho_com_createdAt_com_sexo_sigla_filtrado.json"
@@ -84,7 +89,6 @@ def load_data(file_path):
             data = json.load(dataset)
         
         pacientes = pd.json_normalize(data["data"]["result"])
-        
         pacientes["createdAt"] = pd.to_datetime(pacientes["createdAt"], errors="coerce")
         pacientes["height"] = pacientes["height"].astype(str).str.replace(',', '.')
         pacientes["height"] = pd.to_numeric(pacientes["height"], errors='coerce')
@@ -109,6 +113,8 @@ if os.path.exists(LOCAL_PATH):
 
 # --- VISUALIZAÇÃO ---
 if df is not None:
+    # Removemos o título daqui porque ele agora é a imagem no header
+    
     col1, col2, col3 = st.columns(3)
     total_pacientes = len(df)
     ativos = df[df["engagement_score"] > 0].copy()
