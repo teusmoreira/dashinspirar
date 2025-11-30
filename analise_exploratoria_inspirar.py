@@ -4,8 +4,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import base64
 import os
-import base64 # Importante para essa solução
 
 # --- 1. DEFINIÇÃO DAS CORES (Identidade Visual) ---
 PRIMARY_PURPLE = "#6A0DAD"   # Roxo Forte
@@ -41,7 +41,11 @@ st.markdown(f"""
         [data-testid="collapsedControl"] {{
             display: none;
         }}
-        /* Força a cor roxa em textos gerais */
+        /* Tira margens padrão do H1 para alinhar melhor */
+        h1 {{
+            padding: 0px !important;
+            margin: 0px !important;
+        }}
         h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{
             color: {PRIMARY_PURPLE} !important;
         }}
@@ -66,37 +70,31 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNÇÃO AUXILIAR: Converter imagem para Base64 ---
-def get_img_as_base64(file_path):
-    """Lê uma imagem local e retorna uma string base64 para embedar no HTML."""
+# --- FUNÇÃO PARA CONVERTER IMAGEM LOCAL EM HTML ---
+def get_img_as_base64(file):
     try:
-        with open(file_path, "rb") as f:
+        with open(file, "rb") as f:
             data = f.read()
         return base64.b64encode(data).decode()
-    except Exception as e:
-        st.error(f"Erro ao processar imagem: {e}")
+    except:
         return None
 
-# --- CABEÇALHO HÍBRIDO (Texto + Imagem Inline) ---
-IMG_PATH = "logo-with-name-D8Yx5pPt.png"
+# --- CABEÇALHO PERFEITO (HTML Flexbox) ---
+logo_path = "logo-with-name-D8Yx5pPt.png"
+img_b64 = get_img_as_base64(logo_path)
 
-if os.path.exists(IMG_PATH):
-    img_base64 = get_img_as_base64(IMG_PATH)
-    if img_base64:
-        # Cria um container flexbox para alinhar texto e imagem na mesma linha
-        header_html = f"""
-            <div style="display: flex; align-items: center; margin-bottom: 1rem;">
-                <h1 style="margin: 0; padding-right: 10px; color: {PRIMARY_PURPLE};">
-                    📊 Dashboard de Engajamento - 
-                </h1>
-                <img src="data:image/png;base64,{img_base64}" alt="Inspirar Logo" style="height: 60px;">
-            </div>
-        """
-        st.markdown(header_html, unsafe_allow_html=True)
+if img_b64:
+    # Se a imagem existe, monta o HTML com a imagem AO LADO do texto
+    header_html = f"""
+    <div style="display: flex; align-items: center; justify-content: flex-start; gap: 15px;">
+        <h1 style="color: {PRIMARY_PURPLE}; margin: 0;">📊 Dashboard de Engajamento - </h1>
+        <img src="data:image/png;base64,{img_b64}" style="height: 50px; margin-top: 5px;">
+    </div>
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
 else:
-    # Fallback caso a imagem não exista
-    st.title("📊 Dashboard de Engajamento - App Inspirar (Imagem não encontrada)")
-    st.warning(f"A imagem '{IMG_PATH}' não foi encontrada na pasta do script.")
+    # Se não achar a imagem, mostra só o texto
+    st.title("📊 Dashboard de Engajamento - App Inspirar")
 
 st.markdown("---") 
 
@@ -111,16 +109,12 @@ def load_data(file_path):
 
         pacientes = pd.json_normalize(data["data"]["result"])
         
-        # --- TRATAMENTO DE DADOS ---
-        # 1. Datas
+        # --- TRATAMENTO ---
         pacientes["createdAt"] = pd.to_datetime(pacientes["createdAt"], errors="coerce")
-        
-        # 2. Altura (Limpeza robusta)
         pacientes["height"] = pacientes["height"].astype(str).str.replace(',', '.')
         pacientes["height"] = pd.to_numeric(pacientes["height"], errors='coerce')
         pacientes["height"] = np.where(pacientes["height"] > 3, pacientes["height"] / 100, pacientes["height"])
         
-        # 3. Scores
         pacientes["n_symptoms"] = pacientes["symptomDiaries"].apply(len)
         pacientes["n_acqs"] = pacientes["acqs"].apply(len)
         pacientes["n_prescriptions"] = pacientes["prescriptions"].apply(len)
@@ -128,25 +122,21 @@ def load_data(file_path):
         pacientes["engagement_score"] = (pacientes["n_symptoms"] + pacientes["n_acqs"] + 
                                          pacientes["n_prescriptions"] + pacientes["n_activity_logs"])
         
-        # 4. IMC
         pacientes["bmi"] = pacientes["weight"] / (pacientes["height"] ** 2)
-        
         return pacientes
     except Exception as e:
-        st.error(f"Erro ao carregar o arquivo local: {e}")
         return None
 
-# --- CARREGAMENTO (Apenas Local) ---
+# --- CARREGAMENTO ---
 df = None
-if os.path.exists(LOCAL_PATH):
+try:
     df = load_data(LOCAL_PATH)
-else:
-    st.error(f"Erro: O arquivo de dados '{LOCAL_PATH}' não foi encontrado na pasta do projeto.")
+except:
+    pass
 
 # --- VISUALIZAÇÃO ---
 if df is not None:
     
-    # --- KPIs ---
     col1, col2, col3 = st.columns(3)
     total_pacientes = len(df)
     ativos = df[df["engagement_score"] > 0].copy()
@@ -163,7 +153,7 @@ if df is not None:
     else:
         tab1, tab2, tab3, tab4 = st.tabs(["Visão Geral", "Perfil", "Temporal", "Correlações"])
 
-        # Aba 1: Visão Geral
+        # Aba 1
         with tab1:
             c1, c2 = st.columns(2)
             with c1:
@@ -190,7 +180,7 @@ if df is not None:
                 sns.despine()
                 st.pyplot(fig2, transparent=False)
 
-        # Aba 2: Perfil
+        # Aba 2
         with tab2:
             st.markdown("##### Análise de Gênero")
             df['sex_label'] = df['sex'].replace({'M': 'Masculino', 'F': 'Feminino'})
@@ -210,7 +200,6 @@ if df is not None:
                     plt.ylabel("")
                     sns.despine()
                     st.pyplot(fig3, transparent=False)
-                
                 with c2:
                     st.markdown("**Proporção**")
                     fig_p = plt.figure(figsize=(4, 4))
@@ -218,7 +207,6 @@ if df is not None:
                     plt.pie(total_sexo["engagement_score"], labels=total_sexo["sex_label"], autopct='%1.0f%%', colors=colors, wedgeprops={'edgecolor': 'white'})
                     fig_p.gca().add_artist(plt.Circle((0,0),0.6,fc='white'))
                     st.pyplot(fig_p, transparent=False)
-                
                 with c3:
                     st.markdown("**Idade**")
                     fig4 = plt.figure(figsize=(6, 4))
@@ -250,7 +238,7 @@ if df is not None:
             sns.despine()
             st.pyplot(fig5, transparent=False)
 
-        # Aba 3: Temporal
+        # Aba 3
         with tab3:
             Funcs = {"Sintomas": "symptomDiaries", "ACQ": "acqs", "Meds": "prescriptions", "Ativ.": "activityLogs"}
             lista_log = []
@@ -260,7 +248,6 @@ if df is not None:
                         for log in row[col]:
                             d = pd.to_datetime(log.get('createdAt'), errors='coerce')
                             if pd.notnull(d):
-                                # Fix Timezone
                                 if d.tz is None: d = d.tz_localize('UTC')
                                 d = d.tz_convert('America/Sao_Paulo')
                                 lista_log.append({'date': d, 'Func': f})
@@ -282,7 +269,6 @@ if df is not None:
                     st.pyplot(fig6, transparent=False)
                 with c_F:
                     st.markdown("##### Heatmap (Sem 00:00)")
-                    # Filtra 00:00
                     df_hm = df_l[df_l['date'].dt.hour != 0].copy()
                     if not df_hm.empty:
                         mapa_dias = {'Monday':'Seg','Tuesday':'Ter','Wednesday':'Qua','Thursday':'Qui','Friday':'Sex','Saturday':'Sáb','Sunday':'Dom'}
@@ -303,11 +289,11 @@ if df is not None:
                         plt.ylabel("")
                         st.pyplot(fig_h, transparent=False)
                     else:
-                        st.info("Apenas dados sem horário (00:00) encontrados.")
+                        st.info("Apenas dados sem horário encontrados.")
             else:
                 st.info("Sem dados temporais.")
 
-        # Aba 4: Correlação
+        # Aba 4
         with tab4:
             st.markdown("##### Dispersão: Idade vs Engajamento")
             df_c = df[(df["engagement_score"] > 0) & (df["age"].notna())].copy()
@@ -328,3 +314,5 @@ if df is not None:
                     st.caption("Pontos = Pacientes\nLinha = Tendência")
             else:
                 st.warning("Dados insuficientes.")
+else:
+    st.error(f"Erro: Arquivo '{LOCAL_PATH}' não encontrado na pasta.")
