@@ -5,20 +5,63 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-# --- CONFIGURAÇÃO VISUAL (TEMA ESCURO) ---
-plt.style.use('dark_background')
-plt.rcParams.update({
-    "figure.facecolor":  (0.0, 0.0, 0.0, 0.0),
-    "axes.facecolor":    (0.0, 0.0, 0.0, 0.0),
-    "savefig.facecolor": (0.0, 0.0, 0.0, 0.0),
-    "text.color": "white",
-    "axes.labelcolor": "white",
-    "xtick.color": "white",
-    "ytick.color": "white",
-    "font.size": 10
-})
+# --- DEFINIÇÃO DA NOVA IDENTIDADE VISUAL (ROXO & BRANCO) ---
+# Cor principal (um roxo forte para contraste no branco)
+PRIMARY_PURPLE = "#6A0DAD" 
+# Cor secundária (um roxo mais claro para detalhes ou segunda categoria)
+SECONDARY_PURPLE = "#9B59B6"
+# Paleta monocromática para gráficos com múltiplas categorias
+PURPLE_PALETTE = sns.color_palette(f"light:{PRIMARY_PURPLE}", n_colors=5, reverse=True)
 
+# Configuração do Matplotlib para Fundo Branco e Texto Roxo
+plt.rcParams.update({
+    "figure.facecolor":  "white",
+    "axes.facecolor":    "white",
+    "savefig.facecolor": "white",
+    # Mudando todos os textos e eixos para roxo
+    "text.color": PRIMARY_PURPLE,
+    "axes.labelcolor": PRIMARY_PURPLE,
+    "xtick.color": PRIMARY_PURPLE,
+    "ytick.color": PRIMARY_PURPLE,
+    "axes.edgecolor": PRIMARY_PURPLE,
+    "font.size": 10,
+    # Limpando as bordas dos gráficos para um visual mais "clean"
+    "axes.spines.top": False,
+    "axes.spines.right": False,
+})
+# -------------------------------------------------------
+
+# --- Configuração da Página ---
 st.set_page_config(page_title="Dashboard Inspirar", layout="wide", initial_sidebar_state="expanded")
+
+# --- CSS CUSTOMIZADO PARA FORÇAR O TEMA BRANCO/ROXO NO STREAMLIT ---
+st.markdown(f"""
+    <style>
+        /* Força fundo branco na aplicação principal e sidebar */
+        .stApp, section[data-testid="stSidebar"] {{
+            background-color: #FFFFFF;
+        }}
+        /* Muda a cor de todos os títulos e textos principais para roxo */
+        h1, h2, h3, h4, p, span, label, .stDataFrame {{
+            color: {PRIMARY_PURPLE} !important;
+        }}
+        /* Estiliza os cartões de métricas (KPIs) */
+        [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {{
+             color: {PRIMARY_PURPLE} !important;
+        }}
+        [data-testid="stMetric"] {{
+            background-color: #F8F0FF; /* Fundo roxo bem clarinho */
+            border: 1px solid {SECONDARY_PURPLE};
+            border-radius: 8px;
+            padding: 10px;
+        }}
+        /* Cor dos divisores (hr) */
+        hr {{
+            border-color: {SECONDARY_PURPLE};
+        }}
+    </style>
+""", unsafe_allow_html=True)
+
 st.title("📊 Dashboard de Engajamento - App Inspirar")
 st.markdown("---") 
 
@@ -70,7 +113,7 @@ elif df is None:
     except:
         pass
 
-# --- VISUALIZAÇÃO (SEM FILTROS DE DATA) ---
+# --- VISUALIZAÇÃO ---
 if df is not None:
     
     # KPIs
@@ -96,19 +139,22 @@ if df is not None:
         with c1:
             st.markdown("##### Distribuição de Interações")
             fig1 = plt.figure(figsize=(8, 4))
-            sns.histplot(df["engagement_score"], bins=20, color='#9b59b6', kde=True)
+            # Mudança de cor para o roxo principal
+            sns.histplot(df["engagement_score"], bins=20, color=PRIMARY_PURPLE, kde=True)
             plt.xlabel("Total Interações")
             plt.ylabel("Qtd Pacientes")
             sns.despine()
-            st.pyplot(fig1, transparent=True)
+            st.pyplot(fig1, transparent=False) # Transparent False para garantir fundo branco
         with c2:
             st.markdown("##### Volume por Funcionalidade")
             tipos = df[["n_symptoms", "n_acqs", "n_prescriptions", "n_activity_logs"]].sum()
             tipos_df = pd.DataFrame({"Func": ["Sintomas", "ACQ", "Meds", "Ativ."], "Total": tipos.values}).sort_values("Total", ascending=False)
             fig2 = plt.figure(figsize=(8, 4))
-            sns.barplot(data=tipos_df, x="Func", y="Total", hue="Func", palette="BuPu", legend=False)
+            # Usando cor única roxa em vez de paleta colorida
+            sns.barplot(data=tipos_df, x="Func", y="Total", color=PRIMARY_PURPLE)
+            plt.ylabel("Registros")
             sns.despine()
-            st.pyplot(fig2, transparent=True)
+            st.pyplot(fig2, transparent=False)
 
     # Aba 2: Perfil
     with tab2:
@@ -124,24 +170,32 @@ if df is not None:
             with c1:
                 st.markdown("**Média**")
                 fig3 = plt.figure(figsize=(4, 4))
-                sns.barplot(data=ativos_sexo, x="sex_label", y="engagement_score", hue="sex_label", palette="coolwarm", legend=False)
+                # Usando cor única roxa
+                sns.barplot(data=ativos_sexo, x="sex_label", y="engagement_score", color=PRIMARY_PURPLE)
+                plt.xlabel("")
+                plt.ylabel("")
                 sns.despine()
-                st.pyplot(fig3, transparent=True)
+                st.pyplot(fig3, transparent=False)
             
             with c2:
                 st.markdown("**Proporção**")
                 fig_p = plt.figure(figsize=(4, 4))
-                colors = sns.color_palette("coolwarm", n_colors=2)
+                # Usando duas tonalidades de roxo para o gráfico de pizza
+                colors = [PRIMARY_PURPLE, SECONDARY_PURPLE]
                 plt.pie(total_sexo["engagement_score"], labels=total_sexo["sex_label"], autopct='%1.0f%%', colors=colors, wedgeprops={'edgecolor': 'white'})
-                fig_p.gca().add_artist(plt.Circle((0,0),0.6,fc='#0E1117'))
-                st.pyplot(fig_p, transparent=True)
+                # Círculo central branco em vez de escuro
+                fig_p.gca().add_artist(plt.Circle((0,0),0.6,fc='white'))
+                st.pyplot(fig_p, transparent=False)
             
             with c3:
                 st.markdown("**Idade**")
                 fig4 = plt.figure(figsize=(6, 4))
-                sns.violinplot(data=ativos_sexo.dropna(subset=["age"]), x="sex_label", y="age", hue="sex_label", palette="coolwarm", legend=False)
+                # Usando cor única roxa
+                sns.violinplot(data=ativos_sexo.dropna(subset=["age"]), x="sex_label", y="age", color=PRIMARY_PURPLE)
+                plt.xlabel("")
+                plt.ylabel("Idade")
                 sns.despine()
-                st.pyplot(fig4, transparent=True)
+                st.pyplot(fig4, transparent=False)
 
         st.divider()
         st.markdown("##### IMC")
@@ -158,9 +212,12 @@ if df is not None:
         eng_imc = ativos_imc.groupby("bmi_category")["engagement_score"].mean().reset_index()
         
         fig5 = plt.figure(figsize=(10, 3))
-        sns.barplot(data=eng_imc, x="bmi_category", y="engagement_score", hue="bmi_category", palette="Purples_d", legend=False)
+        # Usando cor única roxa
+        sns.barplot(data=eng_imc, x="bmi_category", y="engagement_score", color=PRIMARY_PURPLE)
+        plt.xlabel("")
+        plt.ylabel("Engajamento Médio")
         sns.despine()
-        st.pyplot(fig5, transparent=True)
+        st.pyplot(fig5, transparent=False)
 
     # Aba 3: Temporal
     with tab3:
@@ -181,17 +238,24 @@ if df is not None:
             with c_E:
                 st.markdown("##### Mensal")
                 fig6 = plt.figure(figsize=(8, 4))
-                sns.lineplot(data=df_l.groupby(['Mês', 'Func']).size().reset_index(name='T'), x='Mês', y='T', hue='Func', marker='o', palette="magma")
+                # Usando paleta monocromática roxa para as linhas
+                sns.lineplot(data=df_l.groupby(['Mês', 'Func']).size().reset_index(name='T'), x='Mês', y='T', hue='Func', marker='o', palette=PURPLE_PALETTE)
+                # Grid roxo claro
+                plt.grid(axis='y', alpha=0.3, linestyle='--', color=SECONDARY_PURPLE)
                 sns.despine()
-                st.pyplot(fig6, transparent=True)
+                st.pyplot(fig6, transparent=False)
             with c_F:
                 st.markdown("##### Heatmap")
                 df_l['dia'] = df_l['date'].dt.day_name().map({'Monday':'Seg','Tuesday':'Ter','Wednesday':'Qua','Thursday':'Qui','Friday':'Sex','Saturday':'Sáb','Sunday':'Dom'})
                 df_l['hora'] = df_l['date'].dt.hour
                 hm = df_l.groupby(['dia', 'hora']).size().unstack(fill_value=0)
                 fig_h = plt.figure(figsize=(8, 4))
-                sns.heatmap(hm, cmap="magma", cbar=False)
-                st.pyplot(fig_h, transparent=True)
+                # Criando um mapa de calor roxo e linhas divisórias brancas
+                cmap_purple = sns.light_palette(PRIMARY_PURPLE, as_cmap=True)
+                sns.heatmap(hm, cmap=cmap_purple, cbar_kws={'label': 'Interações'}, linewidths=0.5, linecolor='white')
+                plt.xlabel("Hora")
+                plt.ylabel("")
+                st.pyplot(fig_h, transparent=False)
         else:
             st.info("Sem dados temporais.")
 
@@ -203,9 +267,4 @@ if df is not None:
             cols = {"n_symptoms": "Sint", "n_acqs": "ACQ", "n_prescriptions": "Meds", "n_activity_logs": "Ativ"}
             corrs = [{"Func": n, "r": df_c["age"].corr(df_c[c])} for c, n in cols.items()]
             fig8 = plt.figure(figsize=(8, 4))
-            sns.barplot(data=pd.DataFrame(corrs), x="Func", y="r", hue="Func", palette="twilight", legend=False)
-            plt.axhline(0, color='white', linewidth=0.5)
-            sns.despine()
-            st.pyplot(fig8, transparent=True)
-else:
-    st.info("Por favor, carregue o arquivo JSON na barra lateral ou verifique se o arquivo local existe.")
+            # Usando pal
