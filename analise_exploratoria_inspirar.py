@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import os
 
 # --- 1. DEFINIÇÃO DAS CORES (Identidade Visual) ---
 PRIMARY_PURPLE = "#6A0DAD"   # Roxo Forte
@@ -39,6 +40,7 @@ st.markdown(f"""
         [data-testid="collapsedControl"] {{
             display: none;
         }}
+        /* Garante que o H1 (onde está o logo) fique roxo */
         h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{
             color: {PRIMARY_PURPLE} !important;
         }}
@@ -60,30 +62,18 @@ st.markdown(f"""
         [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{
             color: {PRIMARY_PURPLE} !important;
         }}
-        
-        /* Ajuste fino para o Título do Header */
-        h1 {{
-            padding-top: 0px !important;
-            margin-top: 20px !important; /* Alinha visualmente com a logo */
-        }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- CABEÇALHO (HEADER: LOGO + TÍTULO) ---
-# Cria duas colunas: Uma para o Logo (menor) e uma para o Título (maior)
-col_header_logo, col_header_text = st.columns([1, 4]) 
-
-with col_header_logo:
-    try:
-        # Logo com tamanho ajustado para parecer um ícone de app/header
-        st.image("logo-with-name-D8Yx5pPt.png", width=220)
-    except:
-        st.warning("Imagem não encontrada")
-
-with col_header_text:
-    # Título do Dashboard ao lado
-    st.title("Dashboard de Engajamento")
-    st.markdown("**Visão analítica dos pacientes e uso do aplicativo**")
+# --- TÍTULO COM LOGO INTEGRADO (USANDO HTML) ---
+# Usamos HTML para colocar a imagem na mesma linha do texto.
+# Ajuste o 'width' (160px) se quiser aumentar ou diminuir o logo.
+st.markdown(f"""
+    <h1>
+        📊 Dashboard de Engajamento - 
+        <img src="logo-with-name-D8Yx5pPt.png" alt="Inspirar Logo" style="width: 160px; vertical-align: middle; margin-bottom: 8px;">
+    </h1>
+""", unsafe_allow_html=True)
 
 st.markdown("---") 
 
@@ -125,10 +115,10 @@ def load_data(file_path):
 
 # --- CARREGAMENTO (Apenas Local) ---
 df = None
-try:
+if os.path.exists(LOCAL_PATH):
     df = load_data(LOCAL_PATH)
-except:
-    pass
+else:
+    st.error(f"Erro: O arquivo de dados '{LOCAL_PATH}' não foi encontrado na pasta do projeto.")
 
 # --- VISUALIZAÇÃO ---
 if df is not None:
@@ -315,5 +305,3 @@ if df is not None:
                     st.caption("Pontos = Pacientes\nLinha = Tendência")
             else:
                 st.warning("Dados insuficientes.")
-else:
-    st.error(f"Erro: O arquivo local '{LOCAL_PATH}' não foi encontrado. Certifique-se de que ele está na mesma pasta do script e que a imagem do banner também.")
