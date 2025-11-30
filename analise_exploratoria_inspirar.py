@@ -6,9 +6,9 @@ import seaborn as sns
 import numpy as np
 
 # --- 1. DEFINIÇÃO DAS CORES (Identidade Visual) ---
-PRIMARY_PURPLE = "#6A0DAD"   # Roxo Forte
-SECONDARY_PURPLE = "#9B59B6" # Roxo Médio
-LIGHT_BG = "#FFFFFF"         # Branco
+PRIMARY_PURPLE = "#6A0DAD"   # Roxo Forte (Títulos e Textos)
+SECONDARY_PURPLE = "#9B59B6" # Roxo Médio (Detalhes)
+LIGHT_BG = "#FFFFFF"         # Branco Absoluto
 
 # --- 2. CONFIGURAÇÃO DOS GRÁFICOS ---
 plt.rcParams.update({
@@ -30,18 +30,33 @@ PURPLE_PALETTE = sns.light_palette(PRIMARY_PURPLE, n_colors=5, reverse=True, inp
 # --- 3. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Dashboard Inspirar", layout="wide", initial_sidebar_state="expanded")
 
-# --- 4. CSS (Tema Claro/Roxo) ---
+# --- 4. CSS REFORÇADO (Tudo Roxo/Branco) ---
 st.markdown(f"""
     <style>
+        /* 1. Força Fundo Branco em TUDO */
         .stApp, header[data-testid="stHeader"], section[data-testid="stSidebar"] {{
             background-color: {LIGHT_BG} !important;
         }}
-        h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{
+        
+        /* 2. Força TEXTO ROXO em Títulos, Parágrafos e Labels */
+        h1, h2, h3, h4, h5, h6, p, li, label, .stMarkdown, div, span, button, a {{
             color: {PRIMARY_PURPLE} !important;
         }}
+        
+        /* 3. Reforço específico para o Título Principal (st.title) */
+        h1 span {{
+            color: {PRIMARY_PURPLE} !important;
+        }}
+        
+        /* 4. Bordas e Separadores */
         section[data-testid="stSidebar"] {{
             border-right: 1px solid #EEE;
         }}
+        hr {{
+            border-color: {SECONDARY_PURPLE} !important;
+        }}
+
+        /* 5. Abas (Tabs) */
         .stTabs [data-baseweb="tab"] {{
             color: {PRIMARY_PURPLE} !important;
             background-color: white !important;
@@ -50,6 +65,8 @@ st.markdown(f"""
             border-bottom-color: {PRIMARY_PURPLE} !important;
             font-weight: bold !important;
         }}
+
+        /* 6. Métricas (KPIs) */
         [data-testid="stMetric"] {{
             background-color: #F8F0FF !important;
             border: 1px solid {SECONDARY_PURPLE};
@@ -60,10 +77,18 @@ st.markdown(f"""
         [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{
             color: {PRIMARY_PURPLE} !important;
         }}
+        
+        /* 7. Upload */
         [data-testid="stFileUploader"] {{
             background-color: #F8F0FF;
             border-radius: 10px;
             padding: 10px;
+        }}
+        
+        /* 8. Botão da Sidebar (se houver) */
+        .stButton button {{
+            border-color: {PRIMARY_PURPLE} !important;
+            color: {PRIMARY_PURPLE} !important;
         }}
     </style>
 """, unsafe_allow_html=True)
@@ -71,7 +96,7 @@ st.markdown(f"""
 st.title("📊 Dashboard de Engajamento - App Inspirar")
 st.markdown("---") 
 
-# --- BARRA LATERAL (SEM FILTRO DE DATA) ---
+# --- BARRA LATERAL ---
 with st.sidebar:
     st.header("📂 Configurações")
     uploaded_file = st.file_uploader("Carregar JSON", type=["json"])
@@ -89,16 +114,15 @@ def load_data(file_input):
 
         pacientes = pd.json_normalize(data["data"]["result"])
         
-        # --- TRATAMENTO DE DADOS ---
-        # 1. Datas
+        # --- TRATAMENTO ---
         pacientes["createdAt"] = pd.to_datetime(pacientes["createdAt"], errors="coerce")
         
-        # 2. Altura (Limpeza robusta)
+        # Altura
         pacientes["height"] = pacientes["height"].astype(str).str.replace(',', '.')
         pacientes["height"] = pd.to_numeric(pacientes["height"], errors='coerce')
         pacientes["height"] = np.where(pacientes["height"] > 3, pacientes["height"] / 100, pacientes["height"])
         
-        # 3. Scores
+        # Scores
         pacientes["n_symptoms"] = pacientes["symptomDiaries"].apply(len)
         pacientes["n_acqs"] = pacientes["acqs"].apply(len)
         pacientes["n_prescriptions"] = pacientes["prescriptions"].apply(len)
@@ -106,210 +130,235 @@ def load_data(file_input):
         pacientes["engagement_score"] = (pacientes["n_symptoms"] + pacientes["n_acqs"] + 
                                          pacientes["n_prescriptions"] + pacientes["n_activity_logs"])
         
-        # 4. IMC
+        # IMC
         pacientes["bmi"] = pacientes["weight"] / (pacientes["height"] ** 2)
-        
         return pacientes
     except Exception as e:
         return None
 
 # --- CARREGAMENTO ---
-df = None
+raw_df = None
 if uploaded_file is not None:
-    df = load_data(uploaded_file)
-elif df is None:
+    raw_df = load_data(uploaded_file)
+elif raw_df is None:
     try:
-        df = load_data(LOCAL_PATH)
+        raw_df = load_data(LOCAL_PATH)
     except:
         pass
 
 # --- VISUALIZAÇÃO ---
-if df is not None:
+if raw_df is not None:
     
-    # --- KPIs ---
+    # Filtro de Data
+    datas_validas = raw_df["createdAt"].dropna()
+    if not datas_validas.empty:
+        min_date = datas_validas.min().date()
+        max_date = datas_validas.max().date()
+    else:
+        min_date = pd.to_datetime("today").date()
+        max_date = pd.to_datetime("today").date()
+    
+    st.sidebar.divider()
+    st.sidebar.subheader("📅 Filtro de Período")
+    date_range = st.sidebar.date_input("Selecione o intervalo:", value=[min_date, max_date], min_value=min_date, max_value=max_date)
+
+    df = raw_df.copy()
+    if isinstance(date_range, list) and len(date_range) == 2:
+        start_date, end_date = date_range
+        mask = (raw_df['createdAt'].dt.date >= start_date) & (raw_df['createdAt'].dt.date <= end_date)
+        df = raw_df.loc[mask].copy()
+    elif isinstance(date_range, (list, tuple)) and len(date_range) == 1:
+        start_date = date_range[0]
+        mask = (raw_df['createdAt'].dt.date == start_date)
+        df = raw_df.loc[mask].copy()
+
+    # KPIs
     col1, col2, col3 = st.columns(3)
     total_pacientes = len(df)
     ativos = df[df["engagement_score"] > 0].copy()
     pct_ativos = (len(ativos) / total_pacientes * 100) if total_pacientes > 0 else 0
 
-    col1.metric("👥 Total de Pacientes", total_pacientes)
+    col1.metric("👥 Pacientes Filtrados", total_pacientes)
     col2.metric("✅ Pacientes Ativos", len(ativos))
     col3.metric("📈 Engajamento", f"{pct_ativos:.1f}%")
 
     st.markdown("---")
 
-    # Abas
-    tab1, tab2, tab3, tab4 = st.tabs(["Visão Geral", "Perfil", "Temporal", "Correlações"])
+    if total_pacientes == 0:
+        st.warning(f"O filtro de data eliminou todos os registros.")
+    else:
+        tab1, tab2, tab3, tab4 = st.tabs(["Visão Geral", "Perfil", "Temporal", "Correlações"])
 
-    # Aba 1: Visão Geral
-    with tab1:
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown("##### Distribuição")
-            fig1 = plt.figure(figsize=(8, 4))
-            ax1 = sns.histplot(df["engagement_score"], bins=20, color=PRIMARY_PURPLE, kde=True)
-            for p in ax1.patches:
-                if p.get_height() > 0:
-                    ax1.annotate(f'{int(p.get_height())}', (p.get_x() + p.get_width() / 2., p.get_height()),
-                                 ha='center', va='bottom', fontsize=9, color=PRIMARY_PURPLE, xytext=(0, 2),
-                                 textcoords='offset points')
-            plt.xlabel("Total Interações")
-            plt.ylabel("Qtd")
-            sns.despine()
-            st.pyplot(fig1, transparent=False)
-        with c2:
-            st.markdown("##### Funcionalidades")
-            tipos = df[["n_symptoms", "n_acqs", "n_prescriptions", "n_activity_logs"]].sum()
-            tipos_df = pd.DataFrame({"Func": ["Sintomas", "ACQ", "Meds", "Ativ."], "Total": tipos.values}).sort_values("Total", ascending=False)
-            fig2 = plt.figure(figsize=(8, 4))
-            ax2 = sns.barplot(data=tipos_df, x="Func", y="Total", color=PRIMARY_PURPLE)
-            ax2.bar_label(ax2.containers[0], fontsize=10, color=PRIMARY_PURPLE, padding=3)
-            plt.ylabel("Registros")
-            sns.despine()
-            st.pyplot(fig2, transparent=False)
-
-    # Aba 2: Perfil
-    with tab2:
-        st.markdown("##### Análise de Gênero")
-        df['sex_label'] = df['sex'].replace({'M': 'Masculino', 'F': 'Feminino'})
-        ativos_sexo = df[df['engagement_score'] > 0].copy()
-        ativos_sexo['sex_label'] = ativos_sexo['sex'].replace({'M': 'Masculino', 'F': 'Feminino'})
-
-        if not ativos_sexo.empty:
-            c1, c2, c3 = st.columns([1, 1, 1.5])
-            total_sexo = ativos_sexo.groupby("sex_label")["engagement_score"].sum().reset_index()
-            
+        # Aba 1
+        with tab1:
+            c1, c2 = st.columns(2)
             with c1:
-                st.markdown("**Média**")
-                fig3 = plt.figure(figsize=(4, 4))
-                ax3 = sns.barplot(data=ativos_sexo, x="sex_label", y="engagement_score", color=PRIMARY_PURPLE, errorbar=None)
-                ax3.bar_label(ax3.containers[0], fmt='%.1f', fontsize=10, color=PRIMARY_PURPLE, padding=3)
-                plt.xlabel("")
-                plt.ylabel("")
+                st.markdown("##### Distribuição")
+                fig1 = plt.figure(figsize=(8, 4))
+                ax1 = sns.histplot(df["engagement_score"], bins=20, color=PRIMARY_PURPLE, kde=True)
+                for p in ax1.patches:
+                    if p.get_height() > 0:
+                        ax1.annotate(f'{int(p.get_height())}', (p.get_x() + p.get_width() / 2., p.get_height()),
+                                     ha='center', va='bottom', fontsize=9, color=PRIMARY_PURPLE, xytext=(0, 2), textcoords='offset points')
+                plt.xlabel("Total Interações")
+                plt.ylabel("Qtd")
                 sns.despine()
-                st.pyplot(fig3, transparent=False)
-            
+                st.pyplot(fig1, transparent=False)
             with c2:
-                st.markdown("**Proporção**")
-                fig_p = plt.figure(figsize=(4, 4))
-                colors = [PRIMARY_PURPLE, SECONDARY_PURPLE]
-                plt.pie(total_sexo["engagement_score"], labels=total_sexo["sex_label"], autopct='%1.0f%%', colors=colors, wedgeprops={'edgecolor': 'white'})
-                fig_p.gca().add_artist(plt.Circle((0,0),0.6,fc='white'))
-                st.pyplot(fig_p, transparent=False)
-            
-            with c3:
-                st.markdown("**Idade**")
-                fig4 = plt.figure(figsize=(6, 4))
-                sns.violinplot(data=ativos_sexo.dropna(subset=["age"]), x="sex_label", y="age", color=PRIMARY_PURPLE)
-                plt.xlabel("")
-                plt.ylabel("Idade")
+                st.markdown("##### Funcionalidades")
+                tipos = df[["n_symptoms", "n_acqs", "n_prescriptions", "n_activity_logs"]].sum()
+                tipos_df = pd.DataFrame({"Func": ["Sintomas", "ACQ", "Meds", "Ativ."], "Total": tipos.values}).sort_values("Total", ascending=False)
+                fig2 = plt.figure(figsize=(8, 4))
+                ax2 = sns.barplot(data=tipos_df, x="Func", y="Total", color=PRIMARY_PURPLE)
+                ax2.bar_label(ax2.containers[0], fontsize=10, color=PRIMARY_PURPLE, padding=3)
+                plt.ylabel("Registros")
                 sns.despine()
-                st.pyplot(fig4, transparent=False)
+                st.pyplot(fig2, transparent=False)
 
-        st.divider()
-        st.markdown("##### IMC")
-        def categorizar_imc(bmi):
-            if bmi < 18.5: return "Abaixo"
-            elif bmi < 25: return "Normal"
-            elif bmi < 30: return "Sobrepeso"
-            else: return "Obesidade"
-        
-        ativos_imc = df[(df["engagement_score"] > 0) & (df["bmi"].notna())].copy()
-        ativos_imc["bmi_category"] = ativos_imc["bmi"].apply(categorizar_imc)
-        ordem = ["Abaixo", "Normal", "Sobrepeso", "Obesidade"]
-        ativos_imc["bmi_category"] = pd.Categorical(ativos_imc["bmi_category"], categories=ordem, ordered=True)
-        eng_imc = ativos_imc.groupby("bmi_category")["engagement_score"].mean().reset_index()
-        
-        fig5 = plt.figure(figsize=(10, 3))
-        ax5 = sns.barplot(data=eng_imc, x="bmi_category", y="engagement_score", color=PRIMARY_PURPLE)
-        ax5.bar_label(ax5.containers[0], fmt='%.1f', fontsize=10, color=PRIMARY_PURPLE, padding=3)
-        plt.xlabel("")
-        plt.ylabel("Engajamento Médio")
-        sns.despine()
-        st.pyplot(fig5, transparent=False)
+        # Aba 2
+        with tab2:
+            st.markdown("##### Análise de Gênero")
+            df['sex_label'] = df['sex'].replace({'M': 'Masculino', 'F': 'Feminino'})
+            ativos_sexo = df[df['engagement_score'] > 0].copy()
+            ativos_sexo['sex_label'] = ativos_sexo['sex'].replace({'M': 'Masculino', 'F': 'Feminino'})
 
-    # Aba 3: Temporal (Sem filtro de período, mas com correção de hora)
-    with tab3:
-        Funcs = {"Sintomas": "symptomDiaries", "ACQ": "acqs", "Meds": "prescriptions", "Ativ.": "activityLogs"}
-        lista_log = []
-        
-        for f, col in Funcs.items():
-            for _, row in df.iterrows():
-                if isinstance(row[col], list):
-                    for log in row[col]:
-                        d = pd.to_datetime(log.get('createdAt'), errors='coerce')
-                        if pd.notnull(d):
-                            # Fix Timezone (UTC -> BRT)
-                            if d.tz is None: d = d.tz_localize('UTC')
-                            d = d.tz_convert('America/Sao_Paulo')
-                            
-                            # Adiciona direto (sem filtro de data)
-                            lista_log.append({'date': d, 'Func': f})
-        
-        df_l = pd.DataFrame(lista_log)
-        if not df_l.empty:
-            df_l['Mês'] = df_l['date'].dt.to_period('M').astype(str)
-            c_E, c_F = st.columns(2)
-            with c_E:
-                st.markdown("##### Mensal")
-                fig6 = plt.figure(figsize=(8, 4))
-                ax6 = sns.lineplot(data=df_l.groupby(['Mês', 'Func']).size().reset_index(name='T'), 
-                                   x='Mês', y='T', hue='Func', marker='o', palette=PURPLE_PALETTE)
-                # Label nos pontos
-                for line in ax6.lines:
-                    for x_val, y_val in zip(line.get_xdata(), line.get_ydata()):
-                        ax6.text(x_val, y_val, f'{int(y_val)}', color=PRIMARY_PURPLE, fontsize=8)
-                plt.grid(axis='y', alpha=0.3, linestyle='--', color=SECONDARY_PURPLE)
-                sns.despine()
-                st.pyplot(fig6, transparent=False)
-            with c_F:
-                st.markdown("##### Heatmap (Sem 00:00)")
-                # Remove registros de 00:00 (datas sem hora)
-                df_hm = df_l[df_l['date'].dt.hour != 0].copy()
+            if not ativos_sexo.empty:
+                c1, c2, c3 = st.columns([1, 1, 1.5])
+                total_sexo = ativos_sexo.groupby("sex_label")["engagement_score"].sum().reset_index()
                 
-                if not df_hm.empty:
-                    mapa_dias = {'Monday':'Seg','Tuesday':'Ter','Wednesday':'Qua','Thursday':'Qui','Friday':'Sex','Saturday':'Sáb','Sunday':'Dom'}
-                    df_hm['dia'] = df_hm['date'].dt.day_name().map(mapa_dias)
-                    ordem_dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
-                    df_hm['dia'] = pd.Categorical(df_hm['dia'], categories=ordem_dias, ordered=True)
-                    df_hm['hora'] = df_hm['date'].dt.hour
-                    
-                    hm = df_hm.groupby(['dia', 'hora']).size().unstack(fill_value=0)
-                    for h in range(1, 24):
-                        if h not in hm.columns: hm[h] = 0
-                    hm = hm.sort_index(axis=1)
-
-                    fig_h = plt.figure(figsize=(8, 4))
-                    cmap_purple = sns.light_palette(PRIMARY_PURPLE, as_cmap=True)
-                    sns.heatmap(hm, cmap=cmap_purple, cbar_kws={'label': 'Interações'}, linewidths=0.5, linecolor='white')
-                    plt.xlabel("Hora")
+                with c1:
+                    st.markdown("**Média**")
+                    fig3 = plt.figure(figsize=(4, 4))
+                    ax3 = sns.barplot(data=ativos_sexo, x="sex_label", y="engagement_score", color=PRIMARY_PURPLE, errorbar=None)
+                    ax3.bar_label(ax3.containers[0], fmt='%.1f', fontsize=10, color=PRIMARY_PURPLE, padding=3)
+                    plt.xlabel("")
                     plt.ylabel("")
-                    st.pyplot(fig_h, transparent=False)
-                else:
-                    st.info("Apenas dados sem horário (00:00) encontrados.")
-        else:
-            st.info("Sem dados temporais.")
+                    sns.despine()
+                    st.pyplot(fig3, transparent=False)
+                with c2:
+                    st.markdown("**Proporção**")
+                    fig_p = plt.figure(figsize=(4, 4))
+                    colors = [PRIMARY_PURPLE, SECONDARY_PURPLE]
+                    plt.pie(total_sexo["engagement_score"], labels=total_sexo["sex_label"], autopct='%1.0f%%', colors=colors, wedgeprops={'edgecolor': 'white'})
+                    fig_p.gca().add_artist(plt.Circle((0,0),0.6,fc='white'))
+                    st.pyplot(fig_p, transparent=False)
+                with c3:
+                    st.markdown("**Idade**")
+                    fig4 = plt.figure(figsize=(6, 4))
+                    sns.violinplot(data=ativos_sexo.dropna(subset=["age"]), x="sex_label", y="age", color=PRIMARY_PURPLE)
+                    plt.xlabel("")
+                    plt.ylabel("Idade")
+                    sns.despine()
+                    st.pyplot(fig4, transparent=False)
 
-    # Aba 4: Correlação (Scatter Plot)
-    with tab4:
-        st.markdown("##### Dispersão: Idade vs Engajamento")
-        df_c = df[(df["engagement_score"] > 0) & (df["age"].notna())].copy()
-        if not df_c.empty:
-            c_sc, c_info = st.columns([3, 1])
-            with c_sc:
-                fig8 = plt.figure(figsize=(10, 6))
-                sns.regplot(data=df_c, x="age", y="engagement_score", color=PRIMARY_PURPLE,
-                            scatter_kws={'alpha': 0.6, 's': 60}, line_kws={'color': SECONDARY_PURPLE})
-                plt.xlabel("Idade")
-                plt.ylabel("Total Interações")
-                sns.despine()
-                plt.grid(alpha=0.2, linestyle='--')
-                st.pyplot(fig8, transparent=False)
-            with c_info:
-                corr_val = df_c["age"].corr(df_c["engagement_score"])
-                st.metric("Correlação (r)", f"{corr_val:.3f}")
-                st.caption("Pontos = Pacientes\nLinha = Tendência")
-        else:
-            st.warning("Dados insuficientes.")
+            st.divider()
+            st.markdown("##### IMC")
+            def categorizar_imc(bmi):
+                if bmi < 18.5: return "Abaixo"
+                elif bmi < 25: return "Normal"
+                elif bmi < 30: return "Sobrepeso"
+                else: return "Obesidade"
+            
+            ativos_imc = df[(df["engagement_score"] > 0) & (df["bmi"].notna())].copy()
+            ativos_imc["bmi_category"] = ativos_imc["bmi"].apply(categorizar_imc)
+            ordem = ["Abaixo", "Normal", "Sobrepeso", "Obesidade"]
+            ativos_imc["bmi_category"] = pd.Categorical(ativos_imc["bmi_category"], categories=ordem, ordered=True)
+            eng_imc = ativos_imc.groupby("bmi_category")["engagement_score"].mean().reset_index()
+            
+            fig5 = plt.figure(figsize=(10, 3))
+            ax5 = sns.barplot(data=eng_imc, x="bmi_category", y="engagement_score", color=PRIMARY_PURPLE)
+            ax5.bar_label(ax5.containers[0], fmt='%.1f', fontsize=10, color=PRIMARY_PURPLE, padding=3)
+            plt.xlabel("")
+            plt.ylabel("Engajamento Médio")
+            sns.despine()
+            st.pyplot(fig5, transparent=False)
+
+        # Aba 3: Temporal
+        with tab3:
+            Funcs = {"Sintomas": "symptomDiaries", "ACQ": "acqs", "Meds": "prescriptions", "Ativ.": "activityLogs"}
+            lista_log = []
+            for f, col in Funcs.items():
+                for _, row in df.iterrows():
+                    if isinstance(row[col], list):
+                        for log in row[col]:
+                            d = pd.to_datetime(log.get('createdAt'), errors='coerce')
+                            if pd.notnull(d):
+                                # Timezone
+                                if d.tz is None: d = d.tz_localize('UTC')
+                                d = d.tz_convert('America/Sao_Paulo')
+                                # Filtro
+                                in_range = False
+                                if isinstance(date_range, list) and len(date_range) == 2:
+                                    if start_date <= d.date() <= end_date: in_range = True
+                                elif isinstance(date_range, (list, tuple)) and len(date_range) == 1:
+                                     if d.date() == start_date: in_range = True
+                                else: in_range = True
+                                
+                                if in_range:
+                                    lista_log.append({'date': d, 'Func': f})
+            
+            df_l = pd.DataFrame(lista_log)
+            if not df_l.empty:
+                df_l['Mês'] = df_l['date'].dt.to_period('M').astype(str)
+                c_E, c_F = st.columns(2)
+                with c_E:
+                    st.markdown("##### Mensal")
+                    fig6 = plt.figure(figsize=(8, 4))
+                    ax6 = sns.lineplot(data=df_l.groupby(['Mês', 'Func']).size().reset_index(name='T'), 
+                                       x='Mês', y='T', hue='Func', marker='o', palette=PURPLE_PALETTE)
+                    for line in ax6.lines:
+                        for x_val, y_val in zip(line.get_xdata(), line.get_ydata()):
+                            ax6.text(x_val, y_val, f'{int(y_val)}', color=PRIMARY_PURPLE, fontsize=8)
+                    plt.grid(axis='y', alpha=0.3, linestyle='--', color=SECONDARY_PURPLE)
+                    sns.despine()
+                    st.pyplot(fig6, transparent=False)
+                with c_F:
+                    st.markdown("##### Heatmap (Sem 00:00)")
+                    # Filtra 00:00
+                    df_hm = df_l[df_l['date'].dt.hour != 0].copy()
+                    if not df_hm.empty:
+                        mapa_dias = {'Monday':'Seg','Tuesday':'Ter','Wednesday':'Qua','Thursday':'Qui','Friday':'Sex','Saturday':'Sáb','Sunday':'Dom'}
+                        df_hm['dia'] = df_hm['date'].dt.day_name().map(mapa_dias)
+                        ordem_dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+                        df_hm['dia'] = pd.Categorical(df_hm['dia'], categories=ordem_dias, ordered=True)
+                        df_hm['hora'] = df_hm['date'].dt.hour
+                        
+                        hm = df_hm.groupby(['dia', 'hora']).size().unstack(fill_value=0)
+                        for h in range(1, 24):
+                            if h not in hm.columns: hm[h] = 0
+                        hm = hm.sort_index(axis=1)
+
+                        fig_h = plt.figure(figsize=(8, 4))
+                        cmap_purple = sns.light_palette(PRIMARY_PURPLE, as_cmap=True)
+                        sns.heatmap(hm, cmap=cmap_purple, cbar_kws={'label': 'Interações'}, linewidths=0.5, linecolor='white')
+                        plt.xlabel("Hora")
+                        plt.ylabel("")
+                        st.pyplot(fig_h, transparent=False)
+                    else:
+                        st.info("Apenas dados sem horário (00:00) encontrados.")
+            else:
+                st.info("Sem dados temporais.")
+
+        # Aba 4: Correlação
+        with tab4:
+            st.markdown("##### Dispersão: Idade vs Engajamento")
+            df_c = df[(df["engagement_score"] > 0) & (df["age"].notna())].copy()
+            if not df_c.empty:
+                c_sc, c_info = st.columns([3, 1])
+                with c_sc:
+                    fig8 = plt.figure(figsize=(10, 6))
+                    sns.regplot(data=df_c, x="age", y="engagement_score", color=PRIMARY_PURPLE,
+                                scatter_kws={'alpha': 0.6, 's': 60}, line_kws={'color': SECONDARY_PURPLE})
+                    plt.xlabel("Idade")
+                    plt.ylabel("Total Interações")
+                    sns.despine()
+                    plt.grid(alpha=0.2, linestyle='--')
+                    st.pyplot(fig8, transparent=False)
+                with c_info:
+                    corr_val = df_c["age"].corr(df_c["engagement_score"])
+                    st.metric("Correlação (r)", f"{corr_val:.3f}")
+                    st.caption("Pontos = Pacientes\nLinha = Tendência")
+            else:
+                st.warning("Dados insuficientes.")
 else:
     st.info("Por favor, carregue o arquivo JSON na barra lateral ou verifique se o arquivo local existe.")
