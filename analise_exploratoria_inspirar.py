@@ -7,12 +7,15 @@ import numpy as np
 import base64
 import os
 
-# --- 1. DEFINIÇÃO DAS CORES ---
+# --- 1. CONFIGURAÇÃO DA PÁGINA ---
+st.set_page_config(page_title="Dashboard Inspirar", layout="wide", initial_sidebar_state="collapsed")
+
+# --- 2. DEFINIÇÃO DAS CORES ---
 PRIMARY_PURPLE = "#6A0DAD"
 SECONDARY_PURPLE = "#9B59B6"
 LIGHT_BG = "#FFFFFF"
 
-# --- 2. CONFIGURAÇÃO DOS GRÁFICOS ---
+# --- 3. CONFIGURAÇÃO DOS GRÁFICOS ---
 plt.rcParams.update({
     "figure.facecolor":  LIGHT_BG,
     "axes.facecolor":    LIGHT_BG,
@@ -29,10 +32,7 @@ plt.rcParams.update({
 
 PURPLE_PALETTE = sns.light_palette(PRIMARY_PURPLE, n_colors=5, reverse=True, input="hex")
 
-# --- 3. CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Dashboard Inspirar", layout="wide", initial_sidebar_state="collapsed")
-
-# --- 4. CSS ---
+# --- 4. CSS GLOBAL ---
 st.markdown(f"""
     <style>
         .stApp, header[data-testid="stHeader"] {{ background-color: {LIGHT_BG} !important; }}
@@ -45,7 +45,7 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 5. FUNÇÃO PARA CONVERTER IMAGEM PARA HTML ---
+# --- 5. CABEÇALHO CORRIGIDO (TEXTO + IMAGEM NA MESMA LINHA) ---
 def get_img_as_base64(file):
     try:
         with open(file, "rb") as f:
@@ -54,27 +54,27 @@ def get_img_as_base64(file):
     except:
         return None
 
-# --- 6. TÍTULO HÍBRIDO (TEXTO + IMAGEM NA MESMA LINHA) ---
 logo_path = "logo-with-name-D8Yx5pPt.png"
 img_b64 = get_img_as_base64(logo_path)
 
 if img_b64:
-    # HTML Flexbox para alinhar Texto e Imagem lado a lado
+    # AQUI ESTÁ A CORREÇÃO:
+    # Um único bloco HTML que segura o Texto e a Imagem lado a lado (flexbox).
     st.markdown(f"""
-    <div style="display: flex; align-items: center; margin-bottom: 20px;">
-        <h1 style="margin: 0; padding-right: 10px; color: {PRIMARY_PURPLE}; font-size: 3rem;">
+    <div style="display: flex; align-items: center; margin-top: -20px; margin-bottom: 20px;">
+        <h1 style="margin: 0; padding-right: 15px; color: {PRIMARY_PURPLE}; font-size: 2.5rem; white-space: nowrap;">
             📊 Dashboard de Engajamento - 
         </h1>
-        <img src="data:image/png;base64,{img_b64}" style="height: 60px; margin-top: 8px;">
+        <img src="data:image/png;base64,{img_b64}" style="height: 60px;">
     </div>
     """, unsafe_allow_html=True)
 else:
-    # Caso a imagem falhe, mostra texto normal
+    # Fallback se a imagem não carregar
     st.title("📊 Dashboard de Engajamento - App Inspirar")
 
 st.markdown("---")
 
-# --- 7. CARREGAMENTO DE DADOS ---
+# --- 6. CARREGAMENTO DE DADOS ---
 LOCAL_PATH = "pacientes_marco-julho_com_createdAt_com_sexo_sigla_filtrado.json"
 
 @st.cache_data
@@ -85,7 +85,6 @@ def load_data(file_path):
         
         pacientes = pd.json_normalize(data["data"]["result"])
         
-        # Tratamentos
         pacientes["createdAt"] = pd.to_datetime(pacientes["createdAt"], errors="coerce")
         pacientes["height"] = pacientes["height"].astype(str).str.replace(',', '.')
         pacientes["height"] = pd.to_numeric(pacientes["height"], errors='coerce')
