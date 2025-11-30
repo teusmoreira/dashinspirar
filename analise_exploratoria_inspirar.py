@@ -74,31 +74,7 @@ else:
     except:
         pass
 
-# --- LÓGICA DE FILTRO DE DATA ---
-df = None
-if raw_df is not None:
-    # 1. Pega data min/max dos dados carregados
-    min_date = raw_df["createdAt"].min().date()
-    max_date = raw_df["createdAt"].max().date()
 
-    # 2. Cria o filtro na sidebar
-    with st.sidebar:
-        st.divider()
-        st.subheader("📅 Filtro de Período")
-        date_range = st.date_input(
-            "Selecione o intervalo:",
-            value=(min_date, max_date),
-            min_value=min_date,
-            max_value=max_date
-        )
-
-    # 3. Aplica o filtro
-    if len(date_range) == 2:
-        start_date, end_date = date_range
-        mask = (raw_df['createdAt'].dt.date >= start_date) & (raw_df['createdAt'].dt.date <= end_date)
-        df = raw_df.loc[mask].copy()
-    else:
-        df = raw_df.copy()
 # --- CONSTRUÇÃO DO DASHBOARD ---
 if df is not None:
     # KPI Section
