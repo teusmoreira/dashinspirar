@@ -7,7 +7,7 @@ import numpy as np
 import base64
 import os
 
-# --- 1. FUNÇÃO AUXILIAR (DEFINIDA PRIMEIRO PARA EVITAR ERRO) ---
+# --- 1. FUNÇÃO AUXILIAR (PRIMEIRO DE TUDO) ---
 def get_img_as_base64(file):
     try:
         with open(file, "rb") as f:
@@ -41,11 +41,10 @@ plt.rcParams.update({
 
 PURPLE_PALETTE = sns.light_palette(PRIMARY_PURPLE, n_colors=5, reverse=True, input="hex")
 
-# --- 5. PREPARAÇÃO DA IMAGEM PARA O CSS ---
+# --- 5. PREPARAÇÃO DO LOGO NO CABEÇALHO ---
 logo_path = "logo-with-name-D8Yx5pPt.png"
-img_b64 = get_img_as_base64(logo_path) # Agora a função já existe!
+img_b64 = get_img_as_base64(logo_path)
 
-# Define o CSS da imagem apenas se ela existir
 header_bg_css = ""
 if img_b64:
     header_bg_css = f"""
@@ -53,7 +52,7 @@ if img_b64:
         background-image: url("data:image/png;base64,{img_b64}");
         background-repeat: no-repeat;
         background-position: center center;
-        background-size: auto 60%;
+        background-size: auto 90%; /* AUMENTADO PARA 90% (Era 60%) */
         background-color: {LIGHT_BG} !important;
     }}
     """
@@ -61,26 +60,46 @@ if img_b64:
 # --- 6. CSS GERAL ---
 st.markdown(f"""
     <style>
-        /* Aplica o fundo e o logo na barra superior */
+        /* Aplica o logo no cabeçalho */
         {header_bg_css}
         
         .stApp {{ background-color: {LIGHT_BG} !important; }}
         
-        /* Ajusta o espaço para o conteúdo não ficar escondido atrás do header */
+        /* Ajusta o espaço para o conteúdo não ficar escondido */
         .block-container {{
             padding-top: 3rem !important; 
         }}
 
         [data-testid="collapsedControl"] {{ display: none; }}
-        h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{ color: {PRIMARY_PURPLE} !important; }}
+        
+        /* Cores dos Textos */
+        h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{ 
+            color: {PRIMARY_PURPLE} !important; 
+        }}
+        
+        /* Abas */
         .stTabs [data-baseweb="tab"] {{ color: {PRIMARY_PURPLE} !important; background-color: white !important; }}
         .stTabs [aria-selected="true"] {{ border-bottom-color: {PRIMARY_PURPLE} !important; font-weight: bold !important; }}
-        [data-testid="stMetric"] {{ background-color: #F8F0FF !important; border: 1px solid {SECONDARY_PURPLE}; border-radius: 8px; padding: 10px; }}
-        [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{ color: {PRIMARY_PURPLE} !important; }}
+        
+        /* Métricas (Cards) */
+        [data-testid="stMetric"] {{ 
+            background-color: #F8F0FF !important; 
+            border: 1px solid {SECONDARY_PURPLE}; 
+            border-radius: 8px; 
+            padding: 10px; 
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.05); 
+        }}
+        [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{ 
+            color: {PRIMARY_PURPLE} !important; 
+        }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- 7. CARREGAMENTO DE DADOS ---
+# --- 7. TÍTULO RESTAURADO ---
+st.title("📊 Dashboard de Engajamento - App Inspirar")
+st.markdown("---") 
+
+# --- 8. CARREGAMENTO DE DADOS ---
 LOCAL_PATH = "pacientes_marco-julho_com_createdAt_com_sexo_sigla_filtrado.json"
 
 @st.cache_data
@@ -90,6 +109,8 @@ def load_data(file_path):
             data = json.load(dataset)
         
         pacientes = pd.json_normalize(data["data"]["result"])
+        
+        # Tratamento
         pacientes["createdAt"] = pd.to_datetime(pacientes["createdAt"], errors="coerce")
         pacientes["height"] = pacientes["height"].astype(str).str.replace(',', '.')
         pacientes["height"] = pd.to_numeric(pacientes["height"], errors='coerce')
