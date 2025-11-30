@@ -11,7 +11,6 @@ SECONDARY_PURPLE = "#9B59B6" # Roxo Médio (Detalhes)
 LIGHT_BG = "#FFFFFF"         # Branco Absoluto
 
 # --- 2. CONFIGURAÇÃO DOS GRÁFICOS (Matplotlib/Seaborn) ---
-# Força fundo branco e textos roxos nos gráficos
 plt.rcParams.update({
     "figure.facecolor":  LIGHT_BG,
     "axes.facecolor":    LIGHT_BG,
@@ -26,45 +25,22 @@ plt.rcParams.update({
     "axes.spines.right": False,
 })
 
-# Paleta de cores roxa para o Seaborn
 PURPLE_PALETTE = sns.light_palette(PRIMARY_PURPLE, n_colors=5, reverse=True, input="hex")
 
 # --- 3. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Dashboard Inspirar", layout="wide", initial_sidebar_state="expanded")
 
-# --- 4. CSS AGRESSIVO (A Mágica acontece aqui) ---
-# Isso força o visual branco/roxo ignorando o tema do seu computador
+# --- 4. CSS AGRESSIVO (Força o tema Branco/Roxo) ---
 st.markdown(f"""
     <style>
-        /* 1. Força Fundo Branco em TUDO */
-        .stApp {{
+        .stApp, header[data-testid="stHeader"], section[data-testid="stSidebar"] {{
             background-color: {LIGHT_BG} !important;
         }}
-        
-        /* 2. Barra Superior (Header) Branca */
-        header[data-testid="stHeader"] {{
-            background-color: {LIGHT_BG} !important;
+        h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{
+            color: {PRIMARY_PURPLE} !important;
         }}
-        
-        /* 3. Barra Lateral Branca */
         section[data-testid="stSidebar"] {{
-            background-color: {LIGHT_BG} !important;
             border-right: 1px solid #EEE;
-        }}
-
-        /* 4. Títulos e Textos em Roxo */
-        h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span {{
-            color: {PRIMARY_PURPLE} !important;
-        }}
-        
-        /* 5. Corrige textos dentro de botões e abas */
-        button {{
-            color: {PRIMARY_PURPLE} !important;
-        }}
-        
-        /* 6. Estiliza as Abas (Tabs) */
-        .stTabs [data-baseweb="tab-list"] {{
-            gap: 10px;
         }}
         .stTabs [data-baseweb="tab"] {{
             color: {PRIMARY_PURPLE} !important;
@@ -74,23 +50,16 @@ st.markdown(f"""
             border-bottom-color: {PRIMARY_PURPLE} !important;
             font-weight: bold !important;
         }}
-
-        /* 7. Estiliza os Cartões de Métricas (KPIs) */
         [data-testid="stMetric"] {{
-            background-color: #F8F0FF !important; /* Roxo muito claro */
+            background-color: #F8F0FF !important;
             border: 1px solid {SECONDARY_PURPLE};
             border-radius: 8px;
             padding: 10px;
             box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
         }}
-        [data-testid="stMetricLabel"] {{
+        [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{
             color: {PRIMARY_PURPLE} !important;
         }}
-        [data-testid="stMetricValue"] {{
-            color: {PRIMARY_PURPLE} !important;
-        }}
-        
-        /* 8. Upload de Arquivo */
         [data-testid="stFileUploader"] {{
             background-color: #F8F0FF;
             border-radius: 10px;
@@ -98,8 +67,6 @@ st.markdown(f"""
         }}
     </style>
 """, unsafe_allow_html=True)
-
-# --- FIM DO CSS ---
 
 st.title("📊 Dashboard de Engajamento - App Inspirar")
 st.markdown("---") 
@@ -109,7 +76,6 @@ with st.sidebar:
     st.header("📂 Fonte de Dados")
     uploaded_file = st.file_uploader("Carregar JSON", type=["json"])
 
-# Caminho do arquivo local
 LOCAL_PATH = "pacientes_marco-julho_com_createdAt_com_sexo_sigla_filtrado.json"
 
 @st.cache_data
@@ -122,13 +88,10 @@ def load_data(file_input):
             data = json.load(file_input)
 
         pacientes = pd.json_normalize(data["data"]["result"])
-        
-        # Tratamentos
         pacientes["createdAt"] = pd.to_datetime(pacientes["createdAt"], errors="coerce")
         pacientes["height"] = pd.to_numeric(pacientes["height"], errors='coerce')
         pacientes["height"] = np.where(pacientes["height"] > 3, pacientes["height"] / 100, pacientes["height"])
         
-        # Scores
         pacientes["n_symptoms"] = pacientes["symptomDiaries"].apply(len)
         pacientes["n_acqs"] = pacientes["acqs"].apply(len)
         pacientes["n_prescriptions"] = pacientes["prescriptions"].apply(len)
@@ -153,10 +116,8 @@ elif df is None:
 
 # --- VISUALIZAÇÃO ---
 if df is not None:
-    
     # KPIs
     col1, col2, col3 = st.columns(3)
-    
     total_pacientes = len(df)
     ativos = df[df["engagement_score"] > 0].copy()
     pct_ativos = (len(ativos) / total_pacientes * 100) if total_pacientes > 0 else 0
@@ -176,7 +137,13 @@ if df is not None:
         with c1:
             st.markdown("##### Distribuição de Interações")
             fig1 = plt.figure(figsize=(8, 4))
-            sns.histplot(df["engagement_score"], bins=20, color=PRIMARY_PURPLE, kde=True)
+            ax1 = sns.histplot(df["engagement_score"], bins=20, color=PRIMARY_PURPLE, kde=True)
+            # Rótulos no Histograma (nos topos das barras)
+            for p in ax1.patches:
+                if p.get_height() > 0:
+                    ax1.annotate(f'{int(p.get_height())}', (p.get_x() + p.get_width() / 2., p.get_height()),
+                                 ha='center', va='bottom', fontsize=9, color=PRIMARY_PURPLE, xytext=(0, 2),
+                                 textcoords='offset points')
             plt.xlabel("Total Interações")
             plt.ylabel("Qtd Pacientes")
             sns.despine()
@@ -185,8 +152,11 @@ if df is not None:
             st.markdown("##### Volume por Funcionalidade")
             tipos = df[["n_symptoms", "n_acqs", "n_prescriptions", "n_activity_logs"]].sum()
             tipos_df = pd.DataFrame({"Func": ["Sintomas", "ACQ", "Meds", "Ativ."], "Total": tipos.values}).sort_values("Total", ascending=False)
+            
             fig2 = plt.figure(figsize=(8, 4))
-            sns.barplot(data=tipos_df, x="Func", y="Total", color=PRIMARY_PURPLE)
+            ax2 = sns.barplot(data=tipos_df, x="Func", y="Total", color=PRIMARY_PURPLE)
+            # Rótulos de dados nas barras
+            ax2.bar_label(ax2.containers[0], fontsize=10, color=PRIMARY_PURPLE, padding=3)
             plt.ylabel("Registros")
             sns.despine()
             st.pyplot(fig2, transparent=False)
@@ -205,7 +175,9 @@ if df is not None:
             with c1:
                 st.markdown("**Média**")
                 fig3 = plt.figure(figsize=(4, 4))
-                sns.barplot(data=ativos_sexo, x="sex_label", y="engagement_score", color=PRIMARY_PURPLE)
+                ax3 = sns.barplot(data=ativos_sexo, x="sex_label", y="engagement_score", color=PRIMARY_PURPLE, errorbar=None)
+                # Rótulo com valor médio
+                ax3.bar_label(ax3.containers[0], fmt='%.1f', fontsize=10, color=PRIMARY_PURPLE, padding=3)
                 plt.xlabel("")
                 plt.ylabel("")
                 sns.despine()
@@ -215,6 +187,7 @@ if df is not None:
                 st.markdown("**Proporção**")
                 fig_p = plt.figure(figsize=(4, 4))
                 colors = [PRIMARY_PURPLE, SECONDARY_PURPLE]
+                # Pizza já tem rótulo (autopct)
                 plt.pie(total_sexo["engagement_score"], labels=total_sexo["sex_label"], autopct='%1.0f%%', colors=colors, wedgeprops={'edgecolor': 'white'})
                 fig_p.gca().add_artist(plt.Circle((0,0),0.6,fc='white'))
                 st.pyplot(fig_p, transparent=False)
@@ -243,7 +216,9 @@ if df is not None:
         eng_imc = ativos_imc.groupby("bmi_category")["engagement_score"].mean().reset_index()
         
         fig5 = plt.figure(figsize=(10, 3))
-        sns.barplot(data=eng_imc, x="bmi_category", y="engagement_score", color=PRIMARY_PURPLE)
+        ax5 = sns.barplot(data=eng_imc, x="bmi_category", y="engagement_score", color=PRIMARY_PURPLE)
+        # Rótulo nas barras de IMC
+        ax5.bar_label(ax5.containers[0], fmt='%.1f', fontsize=10, color=PRIMARY_PURPLE, padding=3)
         plt.xlabel("")
         plt.ylabel("Engajamento Médio")
         sns.despine()
@@ -268,7 +243,13 @@ if df is not None:
             with c_E:
                 st.markdown("##### Mensal")
                 fig6 = plt.figure(figsize=(8, 4))
-                sns.lineplot(data=df_l.groupby(['Mês', 'Func']).size().reset_index(name='T'), x='Mês', y='T', hue='Func', marker='o', palette=PURPLE_PALETTE)
+                ax6 = sns.lineplot(data=df_l.groupby(['Mês', 'Func']).size().reset_index(name='T'), 
+                                   x='Mês', y='T', hue='Func', marker='o', palette=PURPLE_PALETTE)
+                # Adicionar rótulos nos pontos da linha
+                for line in ax6.lines:
+                    for x_val, y_val in zip(line.get_xdata(), line.get_ydata()):
+                        ax6.text(x_val, y_val, f'{int(y_val)}', color=PRIMARY_PURPLE, fontsize=8, ha='left', va='bottom')
+                
                 plt.grid(axis='y', alpha=0.3, linestyle='--', color=SECONDARY_PURPLE)
                 sns.despine()
                 st.pyplot(fig6, transparent=False)
@@ -279,25 +260,70 @@ if df is not None:
                 hm = df_l.groupby(['dia', 'hora']).size().unstack(fill_value=0)
                 fig_h = plt.figure(figsize=(8, 4))
                 cmap_purple = sns.light_palette(PRIMARY_PURPLE, as_cmap=True)
-                sns.heatmap(hm, cmap=cmap_purple, cbar_kws={'label': 'Interações'}, linewidths=0.5, linecolor='white')
+                # Anotação (annot=True) coloca os números dentro dos quadrados
+                sns.heatmap(hm, cmap=cmap_purple, cbar_kws={'label': 'Interações'}, linewidths=0.5, linecolor='white', annot=False)
                 plt.xlabel("Hora")
                 plt.ylabel("")
                 st.pyplot(fig_h, transparent=False)
         else:
             st.info("Sem dados temporais.")
 
-    # Aba 4: Correlação
+    # Aba 4: Correlação (ATUALIZADA: Scatter Plot com Regressão)
     with tab4:
-        st.markdown("##### Correlação Idade vs Uso")
+        st.markdown("##### Dispersão: Idade vs Engajamento Total")
         df_c = df[(df["engagement_score"] > 0) & (df["age"].notna())].copy()
+        
         if not df_c.empty:
-            cols = {"n_symptoms": "Sint", "n_acqs": "ACQ", "n_prescriptions": "Meds", "n_activity_logs": "Ativ"}
-            corrs = [{"Func": n, "r": df_c["age"].corr(df_c[c])} for c, n in cols.items()]
-            fig8 = plt.figure(figsize=(8, 4))
-            sns.barplot(data=pd.DataFrame(corrs), x="Func", y="r", color=PRIMARY_PURPLE)
-            plt.axhline(0, color=PRIMARY_PURPLE, linewidth=0.5)
-            plt.ylabel("Correlação (r)")
-            sns.despine()
-            st.pyplot(fig8, transparent=False)
+            # Layout em duas colunas para o gráfico e os detalhes
+            col_scatter, col_info = st.columns([3, 1])
+            
+            with col_scatter:
+                fig8 = plt.figure(figsize=(10, 6))
+                
+                # Gráfico de Dispersão com Linha de Regressão
+                # scatter_kws define a cor das bolinhas (transparência alpha ajuda a ver sobreposição)
+                # line_kws define a cor da linha de tendência
+                sns.regplot(
+                    data=df_c, 
+                    x="age", 
+                    y="engagement_score",
+                    color=PRIMARY_PURPLE,
+                    scatter_kws={'alpha': 0.6, 's': 60}, 
+                    line_kws={'color': SECONDARY_PURPLE, 'linewidth': 2}
+                )
+                
+                plt.title("Relação entre Idade e Uso do App", fontsize=12, pad=15)
+                plt.xlabel("Idade (anos)", fontsize=11)
+                plt.ylabel("Total de Interações", fontsize=11)
+                sns.despine()
+                plt.grid(alpha=0.2, linestyle='--')
+                st.pyplot(fig8, transparent=False)
+
+            with col_info:
+                st.markdown("**Análise Estatística**")
+                
+                # Cálculo da Correlação
+                corr_val = df_c["age"].corr(df_c["engagement_score"])
+                
+                # Interpretação
+                if abs(corr_val) < 0.3:
+                    interp = "Fraca"
+                elif abs(corr_val) < 0.7:
+                    interp = "Moderada"
+                else:
+                    interp = "Forte"
+                
+                direction = "Positiva (Mais velhos usam mais)" if corr_val > 0 else "Negativa (Mais jovens usam mais)"
+                
+                st.metric("Coeficiente (r)", f"{corr_val:.3f}")
+                st.info(f"""
+                **Interpretação:**
+                * Força: {interp}
+                * Direção: {direction}
+                """)
+                st.caption("Cada ponto representa um paciente ativo.")
+        else:
+            st.warning("Dados insuficientes para correlação.")
+
 else:
     st.info("Por favor, carregue o arquivo JSON na barra lateral ou verifique se o arquivo local existe.")
