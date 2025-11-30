@@ -28,7 +28,6 @@ plt.rcParams.update({
 PURPLE_PALETTE = sns.light_palette(PRIMARY_PURPLE, n_colors=5, reverse=True, input="hex")
 
 # --- 3. CONFIGURAÇÃO DA PÁGINA ---
-# "collapsed" ajuda a esconder a barra se ela tentar aparecer vazia
 st.set_page_config(page_title="Dashboard Inspirar", layout="wide", initial_sidebar_state="collapsed")
 
 # --- 4. CSS (Tema Claro/Roxo) ---
@@ -37,12 +36,15 @@ st.markdown(f"""
         .stApp, header[data-testid="stHeader"] {{
             background-color: {LIGHT_BG} !important;
         }}
-        /* Esconde o botão de fechar sidebar já que não a usamos */
         [data-testid="collapsedControl"] {{
             display: none;
         }}
         h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{
             color: {PRIMARY_PURPLE} !important;
+        }}
+        /* Ajuste fino para alinhar verticalmente o texto do título com a imagem */
+        h1 {{
+            padding-top: 10px;
         }}
         .stTabs [data-baseweb="tab"] {{
             color: {PRIMARY_PURPLE} !important;
@@ -62,33 +64,34 @@ st.markdown(f"""
         [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{
             color: {PRIMARY_PURPLE} !important;
         }}
-        [data-testid="stFileUploader"] {{
-            background-color: #F8F0FF;
-            border-radius: 10px;
-            padding: 10px;
-        }}
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📊 Dashboard de Engajamento - App Inspirar")
+# --- CABEÇALHO COM LOGOTIPO ---
+# Cria duas colunas: uma para a imagem (menor) e outra para o texto (maior)
+col_logo, col_text = st.columns([1, 5])
 
-# --- CONFIGURAÇÃO DE DADOS (NO TOPO DA PÁGINA) ---
-# Usamos um Expander para o upload não poluir o visual principal
-with st.expander("📂 Carregar novo arquivo de dados (JSON)", expanded=False):
-    uploaded_file = st.file_uploader("Arraste seu arquivo aqui", type=["json"])
+with col_logo:
+    # Tenta carregar a imagem. Se não achar, não quebra o app.
+    try:
+        st.image("logo-with-name-D8Yx5pPt.png", use_column_width=True)
+    except:
+        st.warning("Imagem 'logo-with-name-D8Yx5pPt.png' não encontrada na pasta.")
+
+with col_text:
+    # Título em texto ao lado da imagem
+    st.title("Dashboard de Engajamento - App Inspirar")
 
 st.markdown("---") 
 
+# --- CONFIGURAÇÃO DOS DADOS ---
 LOCAL_PATH = "pacientes_marco-julho_com_createdAt_com_sexo_sigla_filtrado.json"
 
 @st.cache_data
-def load_data(file_input):
+def load_data(file_path):
     try:
-        if isinstance(file_input, str):
-            with open(file_input, "r", encoding="utf-8") as dataset:
-                data = json.load(dataset)
-        else:
-            data = json.load(file_input)
+        with open(file_path, "r", encoding="utf-8") as dataset:
+            data = json.load(dataset)
 
         pacientes = pd.json_normalize(data["data"]["result"])
         
@@ -114,17 +117,15 @@ def load_data(file_input):
         
         return pacientes
     except Exception as e:
+        st.error(f"Erro ao carregar o arquivo local: {e}")
         return None
 
-# --- CARREGAMENTO ---
+# --- CARREGAMENTO (Apenas Local) ---
 df = None
-if uploaded_file is not None:
-    df = load_data(uploaded_file)
-elif df is None:
-    try:
-        df = load_data(LOCAL_PATH)
-    except:
-        pass
+try:
+    df = load_data(LOCAL_PATH)
+except:
+    pass
 
 # --- VISUALIZAÇÃO ---
 if df is not None:
@@ -142,7 +143,7 @@ if df is not None:
     st.markdown("---")
 
     if total_pacientes == 0:
-        st.warning(f"O filtro de data eliminou todos os registros.")
+        st.warning(f"Não há registros no arquivo local.")
     else:
         tab1, tab2, tab3, tab4 = st.tabs(["Visão Geral", "Perfil", "Temporal", "Correlações"])
 
@@ -246,7 +247,6 @@ if df is not None:
                                 # Fix Timezone
                                 if d.tz is None: d = d.tz_localize('UTC')
                                 d = d.tz_convert('America/Sao_Paulo')
-                                # Sem filtro de data, adiciona tudo
                                 lista_log.append({'date': d, 'Func': f})
             
             df_l = pd.DataFrame(lista_log)
@@ -313,4 +313,4 @@ if df is not None:
             else:
                 st.warning("Dados insuficientes.")
 else:
-    st.info("Por favor, carregue o arquivo JSON no topo da página ou verifique se o arquivo local existe.")
+    st.error(f"Erro: O arquivo local '{LOCAL_PATH}' não foi encontrado. Certifique-se de que ele está na mesma pasta do script.")
