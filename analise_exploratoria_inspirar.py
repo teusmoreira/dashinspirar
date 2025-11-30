@@ -25,6 +25,11 @@ st.set_page_config(page_title="Dashboard Inspirar", layout="wide", initial_sideb
 st.title("📊 Dashboard de Engajamento - App Inspirar")
 st.markdown("---") 
 
+# --- Barra Lateral para Upload ---
+with st.sidebar:
+    st.header("📂 Fonte de Dados")
+    uploaded_file = st.file_uploader("Carregar JSON", type=["json"])
+    st.info("Faça o upload do arquivo 'pacientes...json' para visualizar os dados atualizados.")
 
 # Caminho fixo local
 LOCAL_PATH = "pacientes_marco-julho_com_createdAt_com_sexo_sigla_filtrado.json"
