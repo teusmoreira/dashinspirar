@@ -120,7 +120,7 @@ if df is not None:
     ativos = df[df["engagement_score"] > 0].copy()
     pct_ativos = (len(ativos) / total_pacientes * 100) if total_pacientes > 0 else 0
 
-    col1.metric("👥 Total de Pacientes", total_pacientes)
+    col1.metric("👥 Totl de Pacientes", total_pacientes)
     col2.metric("✅ Pacientes Ativos", len(ativos))
     col3.metric("📈 Engajamento", f"{pct_ativos:.1f}%")
 
