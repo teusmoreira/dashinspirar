@@ -6,9 +6,9 @@ import seaborn as sns
 import numpy as np
 
 # --- 1. DEFINIÇÃO DAS CORES (Identidade Visual) ---
-PRIMARY_PURPLE = "#6A0DAD"   # Roxo Forte (Títulos e Textos)
-SECONDARY_PURPLE = "#9B59B6" # Roxo Médio (Detalhes)
-LIGHT_BG = "#FFFFFF"         # Branco Absoluto
+PRIMARY_PURPLE = "#6A0DAD"   # Roxo Forte
+SECONDARY_PURPLE = "#9B59B6" # Roxo Médio
+LIGHT_BG = "#FFFFFF"         # Branco
 
 # --- 2. CONFIGURAÇÃO DOS GRÁFICOS ---
 plt.rcParams.update({
@@ -28,35 +28,22 @@ plt.rcParams.update({
 PURPLE_PALETTE = sns.light_palette(PRIMARY_PURPLE, n_colors=5, reverse=True, input="hex")
 
 # --- 3. CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Dashboard Inspirar", layout="wide", initial_sidebar_state="expanded")
+# "collapsed" ajuda a esconder a barra se ela tentar aparecer vazia
+st.set_page_config(page_title="Dashboard Inspirar", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 4. CSS REFORÇADO (Tudo Roxo/Branco) ---
+# --- 4. CSS (Tema Claro/Roxo) ---
 st.markdown(f"""
     <style>
-        /* 1. Força Fundo Branco em TUDO */
-        .stApp, header[data-testid="stHeader"], section[data-testid="stSidebar"] {{
+        .stApp, header[data-testid="stHeader"] {{
             background-color: {LIGHT_BG} !important;
         }}
-        
-        /* 2. Força TEXTO ROXO em Títulos, Parágrafos e Labels */
-        h1, h2, h3, h4, h5, h6, p, li, label, .stMarkdown, div, span, button, a {{
+        /* Esconde o botão de fechar sidebar já que não a usamos */
+        [data-testid="collapsedControl"] {{
+            display: none;
+        }}
+        h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{
             color: {PRIMARY_PURPLE} !important;
         }}
-        
-        /* 3. Reforço específico para o Título Principal (st.title) */
-        h1 span {{
-            color: {PRIMARY_PURPLE} !important;
-        }}
-        
-        /* 4. Bordas e Separadores */
-        section[data-testid="stSidebar"] {{
-            border-right: 1px solid #EEE;
-        }}
-        hr {{
-            border-color: {SECONDARY_PURPLE} !important;
-        }}
-
-        /* 5. Abas (Tabs) */
         .stTabs [data-baseweb="tab"] {{
             color: {PRIMARY_PURPLE} !important;
             background-color: white !important;
@@ -65,8 +52,6 @@ st.markdown(f"""
             border-bottom-color: {PRIMARY_PURPLE} !important;
             font-weight: bold !important;
         }}
-
-        /* 6. Métricas (KPIs) */
         [data-testid="stMetric"] {{
             background-color: #F8F0FF !important;
             border: 1px solid {SECONDARY_PURPLE};
@@ -77,29 +62,22 @@ st.markdown(f"""
         [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{
             color: {PRIMARY_PURPLE} !important;
         }}
-        
-        /* 7. Upload */
         [data-testid="stFileUploader"] {{
             background-color: #F8F0FF;
             border-radius: 10px;
             padding: 10px;
         }}
-        
-        /* 8. Botão da Sidebar (se houver) */
-        .stButton button {{
-            border-color: {PRIMARY_PURPLE} !important;
-            color: {PRIMARY_PURPLE} !important;
-        }}
     </style>
 """, unsafe_allow_html=True)
 
 st.title("📊 Dashboard de Engajamento - App Inspirar")
-st.markdown("---") 
 
-# --- BARRA LATERAL ---
-with st.sidebar:
-    st.header("📂 Configurações")
-    uploaded_file = st.file_uploader("Carregar JSON", type=["json"])
+# --- CONFIGURAÇÃO DE DADOS (NO TOPO DA PÁGINA) ---
+# Usamos um Expander para o upload não poluir o visual principal
+with st.expander("📂 Carregar novo arquivo de dados (JSON)", expanded=False):
+    uploaded_file = st.file_uploader("Arraste seu arquivo aqui", type=["json"])
+
+st.markdown("---") 
 
 LOCAL_PATH = "pacientes_marco-julho_com_createdAt_com_sexo_sigla_filtrado.json"
 
@@ -114,15 +92,16 @@ def load_data(file_input):
 
         pacientes = pd.json_normalize(data["data"]["result"])
         
-        # --- TRATAMENTO ---
+        # --- TRATAMENTO DE DADOS ---
+        # 1. Datas
         pacientes["createdAt"] = pd.to_datetime(pacientes["createdAt"], errors="coerce")
         
-        # Altura
+        # 2. Altura (Limpeza robusta)
         pacientes["height"] = pacientes["height"].astype(str).str.replace(',', '.')
         pacientes["height"] = pd.to_numeric(pacientes["height"], errors='coerce')
         pacientes["height"] = np.where(pacientes["height"] > 3, pacientes["height"] / 100, pacientes["height"])
         
-        # Scores
+        # 3. Scores
         pacientes["n_symptoms"] = pacientes["symptomDiaries"].apply(len)
         pacientes["n_acqs"] = pacientes["acqs"].apply(len)
         pacientes["n_prescriptions"] = pacientes["prescriptions"].apply(len)
@@ -130,55 +109,33 @@ def load_data(file_input):
         pacientes["engagement_score"] = (pacientes["n_symptoms"] + pacientes["n_acqs"] + 
                                          pacientes["n_prescriptions"] + pacientes["n_activity_logs"])
         
-        # IMC
+        # 4. IMC
         pacientes["bmi"] = pacientes["weight"] / (pacientes["height"] ** 2)
+        
         return pacientes
     except Exception as e:
         return None
 
 # --- CARREGAMENTO ---
-raw_df = None
+df = None
 if uploaded_file is not None:
-    raw_df = load_data(uploaded_file)
-elif raw_df is None:
+    df = load_data(uploaded_file)
+elif df is None:
     try:
-        raw_df = load_data(LOCAL_PATH)
+        df = load_data(LOCAL_PATH)
     except:
         pass
 
 # --- VISUALIZAÇÃO ---
-if raw_df is not None:
+if df is not None:
     
-    # Filtro de Data
-    datas_validas = raw_df["createdAt"].dropna()
-    if not datas_validas.empty:
-        min_date = datas_validas.min().date()
-        max_date = datas_validas.max().date()
-    else:
-        min_date = pd.to_datetime("today").date()
-        max_date = pd.to_datetime("today").date()
-    
-    st.sidebar.divider()
-    st.sidebar.subheader("📅 Filtro de Período")
-    date_range = st.sidebar.date_input("Selecione o intervalo:", value=[min_date, max_date], min_value=min_date, max_value=max_date)
-
-    df = raw_df.copy()
-    if isinstance(date_range, list) and len(date_range) == 2:
-        start_date, end_date = date_range
-        mask = (raw_df['createdAt'].dt.date >= start_date) & (raw_df['createdAt'].dt.date <= end_date)
-        df = raw_df.loc[mask].copy()
-    elif isinstance(date_range, (list, tuple)) and len(date_range) == 1:
-        start_date = date_range[0]
-        mask = (raw_df['createdAt'].dt.date == start_date)
-        df = raw_df.loc[mask].copy()
-
-    # KPIs
+    # --- KPIs ---
     col1, col2, col3 = st.columns(3)
     total_pacientes = len(df)
     ativos = df[df["engagement_score"] > 0].copy()
     pct_ativos = (len(ativos) / total_pacientes * 100) if total_pacientes > 0 else 0
 
-    col1.metric("👥 Pacientes Filtrados", total_pacientes)
+    col1.metric("👥 Total de Pacientes", total_pacientes)
     col2.metric("✅ Pacientes Ativos", len(ativos))
     col3.metric("📈 Engajamento", f"{pct_ativos:.1f}%")
 
@@ -189,7 +146,7 @@ if raw_df is not None:
     else:
         tab1, tab2, tab3, tab4 = st.tabs(["Visão Geral", "Perfil", "Temporal", "Correlações"])
 
-        # Aba 1
+        # Aba 1: Visão Geral
         with tab1:
             c1, c2 = st.columns(2)
             with c1:
@@ -199,7 +156,8 @@ if raw_df is not None:
                 for p in ax1.patches:
                     if p.get_height() > 0:
                         ax1.annotate(f'{int(p.get_height())}', (p.get_x() + p.get_width() / 2., p.get_height()),
-                                     ha='center', va='bottom', fontsize=9, color=PRIMARY_PURPLE, xytext=(0, 2), textcoords='offset points')
+                                     ha='center', va='bottom', fontsize=9, color=PRIMARY_PURPLE, xytext=(0, 2),
+                                     textcoords='offset points')
                 plt.xlabel("Total Interações")
                 plt.ylabel("Qtd")
                 sns.despine()
@@ -215,7 +173,7 @@ if raw_df is not None:
                 sns.despine()
                 st.pyplot(fig2, transparent=False)
 
-        # Aba 2
+        # Aba 2: Perfil
         with tab2:
             st.markdown("##### Análise de Gênero")
             df['sex_label'] = df['sex'].replace({'M': 'Masculino', 'F': 'Feminino'})
@@ -235,6 +193,7 @@ if raw_df is not None:
                     plt.ylabel("")
                     sns.despine()
                     st.pyplot(fig3, transparent=False)
+                
                 with c2:
                     st.markdown("**Proporção**")
                     fig_p = plt.figure(figsize=(4, 4))
@@ -242,6 +201,7 @@ if raw_df is not None:
                     plt.pie(total_sexo["engagement_score"], labels=total_sexo["sex_label"], autopct='%1.0f%%', colors=colors, wedgeprops={'edgecolor': 'white'})
                     fig_p.gca().add_artist(plt.Circle((0,0),0.6,fc='white'))
                     st.pyplot(fig_p, transparent=False)
+                
                 with c3:
                     st.markdown("**Idade**")
                     fig4 = plt.figure(figsize=(6, 4))
@@ -283,19 +243,11 @@ if raw_df is not None:
                         for log in row[col]:
                             d = pd.to_datetime(log.get('createdAt'), errors='coerce')
                             if pd.notnull(d):
-                                # Timezone
+                                # Fix Timezone
                                 if d.tz is None: d = d.tz_localize('UTC')
                                 d = d.tz_convert('America/Sao_Paulo')
-                                # Filtro
-                                in_range = False
-                                if isinstance(date_range, list) and len(date_range) == 2:
-                                    if start_date <= d.date() <= end_date: in_range = True
-                                elif isinstance(date_range, (list, tuple)) and len(date_range) == 1:
-                                     if d.date() == start_date: in_range = True
-                                else: in_range = True
-                                
-                                if in_range:
-                                    lista_log.append({'date': d, 'Func': f})
+                                # Sem filtro de data, adiciona tudo
+                                lista_log.append({'date': d, 'Func': f})
             
             df_l = pd.DataFrame(lista_log)
             if not df_l.empty:
@@ -361,4 +313,4 @@ if raw_df is not None:
             else:
                 st.warning("Dados insuficientes.")
 else:
-    st.info("Por favor, carregue o arquivo JSON na barra lateral ou verifique se o arquivo local existe.")
+    st.info("Por favor, carregue o arquivo JSON no topo da página ou verifique se o arquivo local existe.")
