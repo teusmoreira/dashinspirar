@@ -7,7 +7,7 @@ import numpy as np
 import base64
 import os
 
-# --- 1. FUNÇÃO AUXILIAR (PRIMEIRO DE TUDO) ---
+# --- 1. FUNÇÃO AUXILIAR ---
 def get_img_as_base64(file):
     try:
         with open(file, "rb") as f:
@@ -23,7 +23,7 @@ st.set_page_config(page_title="Dashboard Inspirar", layout="wide", initial_sideb
 PRIMARY_PURPLE = "#6A0DAD"
 SECONDARY_PURPLE = "#9B59B6"
 LIGHT_BG = "#FFFFFF"
-WHITE_TEXT = "#FFFFFF" # Nova cor para o texto dentro do gráfico
+BLACK_TEXT = "#000000" # Nova cor para a porcentagem
 
 # --- 4. CONFIGURAÇÃO DOS GRÁFICOS ---
 plt.rcParams.update({
@@ -42,7 +42,7 @@ plt.rcParams.update({
 
 PURPLE_PALETTE = sns.light_palette(PRIMARY_PURPLE, n_colors=5, reverse=True, input="hex")
 
-# --- 5. PREPARAÇÃO DO LOGO NO CABEÇALHO ---
+# --- 5. HEADER ---
 logo_path = "logo-with-name-D8Yx5pPt.png"
 img_b64 = get_img_as_base64(logo_path)
 
@@ -62,32 +62,14 @@ if img_b64:
 st.markdown(f"""
     <style>
         {header_bg_css}
-        
         .stApp {{ background-color: {LIGHT_BG} !important; }}
-        
-        .block-container {{
-            padding-top: 3rem !important; 
-        }}
-
+        .block-container {{ padding-top: 3rem !important; }}
         [data-testid="collapsedControl"] {{ display: none; }}
-        
-        h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{ 
-            color: {PRIMARY_PURPLE} !important; 
-        }}
-        
+        h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{ color: {PRIMARY_PURPLE} !important; }}
         .stTabs [data-baseweb="tab"] {{ color: {PRIMARY_PURPLE} !important; background-color: white !important; }}
         .stTabs [aria-selected="true"] {{ border-bottom-color: {PRIMARY_PURPLE} !important; font-weight: bold !important; }}
-        
-        [data-testid="stMetric"] {{ 
-            background-color: #F8F0FF !important; 
-            border: 1px solid {SECONDARY_PURPLE}; 
-            border-radius: 8px; 
-            padding: 10px; 
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.05); 
-        }}
-        [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{ 
-            color: {PRIMARY_PURPLE} !important; 
-        }}
+        [data-testid="stMetric"] {{ background-color: #F8F0FF !important; border: 1px solid {SECONDARY_PURPLE}; border-radius: 8px; padding: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }}
+        [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{ color: {PRIMARY_PURPLE} !important; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -103,22 +85,17 @@ def load_data(file_path):
     try:
         with open(file_path, "r", encoding="utf-8") as dataset:
             data = json.load(dataset)
-        
         pacientes = pd.json_normalize(data["data"]["result"])
-        
-        # Tratamento
         pacientes["createdAt"] = pd.to_datetime(pacientes["createdAt"], errors="coerce")
         pacientes["height"] = pacientes["height"].astype(str).str.replace(',', '.')
         pacientes["height"] = pd.to_numeric(pacientes["height"], errors='coerce')
         pacientes["height"] = np.where(pacientes["height"] > 3, pacientes["height"] / 100, pacientes["height"])
-        
         pacientes["n_symptoms"] = pacientes["symptomDiaries"].apply(len)
         pacientes["n_acqs"] = pacientes["acqs"].apply(len)
         pacientes["n_prescriptions"] = pacientes["prescriptions"].apply(len)
         pacientes["n_activity_logs"] = pacientes["activityLogs"].apply(len)
         pacientes["engagement_score"] = (pacientes["n_symptoms"] + pacientes["n_acqs"] + 
                                          pacientes["n_prescriptions"] + pacientes["n_activity_logs"])
-        
         pacientes["bmi"] = pacientes["weight"] / (pacientes["height"] ** 2)
         return pacientes
     except Exception as e:
@@ -131,7 +108,6 @@ if os.path.exists(LOCAL_PATH):
 
 # --- VISUALIZAÇÃO ---
 if df is not None:
-    
     col1, col2, col3 = st.columns(3)
     total_pacientes = len(df)
     ativos = df[df["engagement_score"] > 0].copy()
@@ -192,21 +168,31 @@ if df is not None:
                     plt.ylabel("")
                     sns.despine()
                     st.pyplot(fig3, transparent=False)
+                
                 with c2:
                     st.markdown("**Proporção**")
                     fig_p = plt.figure(figsize=(4, 4))
                     colors = [PRIMARY_PURPLE, SECONDARY_PURPLE]
-                    # --- CORREÇÃO AQUI ---
-                    # Adicionado textprops para mudar cor, peso e tamanho da fonte da porcentagem
-                    plt.pie(total_sexo["engagement_score"], 
-                            labels=total_sexo["sex_label"], 
-                            autopct='%1.0f%%', 
-                            colors=colors, 
-                            wedgeprops={'edgecolor': 'white'},
-                            textprops={'color': WHITE_TEXT, 'weight': 'bold', 'fontsize': 12}) 
-                    # ---------------------
+                    
+                    # --- CORREÇÃO AQUI: Capturamos os textos para pintar separadamente ---
+                    wedges, texts, autotexts = plt.pie(
+                        total_sexo["engagement_score"], 
+                        labels=total_sexo["sex_label"], 
+                        autopct='%1.0f%%', 
+                        colors=colors, 
+                        wedgeprops={'edgecolor': 'white'}
+                    )
+                    
+                    # Estiliza as porcentagens (dentro) = PRETO e NEGRITO
+                    plt.setp(autotexts, size=12, weight="bold", color=BLACK_TEXT)
+                    
+                    # Estiliza os rótulos (fora) = ROXO
+                    plt.setp(texts, size=10, weight="bold", color=PRIMARY_PURPLE)
+                    # ---------------------------------------------------------------------
+
                     fig_p.gca().add_artist(plt.Circle((0,0),0.6,fc='white'))
                     st.pyplot(fig_p, transparent=False)
+                
                 with c3:
                     st.markdown("**Idade**")
                     fig4 = plt.figure(figsize=(6, 4))
