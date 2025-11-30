@@ -42,10 +42,6 @@ st.markdown(f"""
         h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{
             color: {PRIMARY_PURPLE} !important;
         }}
-        /* Ajuste fino para alinhar verticalmente o texto do título com a imagem */
-        h1 {{
-            padding-top: 10px;
-        }}
         .stTabs [data-baseweb="tab"] {{
             color: {PRIMARY_PURPLE} !important;
             background-color: white !important;
@@ -67,20 +63,17 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- CABEÇALHO COM LOGOTIPO ---
-# Cria duas colunas: uma para a imagem (menor) e outra para o texto (maior)
-col_logo, col_text = st.columns([1, 5])
+# --- CABEÇALHO (BANNER + TÍTULO COM ÍCONE) ---
+try:
+    # Imagem como banner no topo, ocupando toda a largura
+    # Certifique-se que o arquivo 'logo-with-name-D8Yx5pPt.png' está na mesma pasta
+    st.image("logo-with-name-D8Yx5pPt.png", use_column_width=True)
+except Exception as e:
+    # Se não achar a imagem, segue a vida sem quebrar o app
+    pass
 
-with col_logo:
-    # Tenta carregar a imagem. Se não achar, não quebra o app.
-    try:
-        st.image("logo-with-name-D8Yx5pPt.png", use_column_width=True)
-    except:
-        st.warning("Imagem 'logo-with-name-D8Yx5pPt.png' não encontrada na pasta.")
-
-with col_text:
-    # Título em texto ao lado da imagem
-    st.title("Dashboard de Engajamento - App Inspirar")
+# Título original com o emoji
+st.title("📊 Dashboard de Engajamento - App Inspirar")
 
 st.markdown("---") 
 
@@ -313,4 +306,4 @@ if df is not None:
             else:
                 st.warning("Dados insuficientes.")
 else:
-    st.error(f"Erro: O arquivo local '{LOCAL_PATH}' não foi encontrado. Certifique-se de que ele está na mesma pasta do script.")
+    st.error(f"Erro: O arquivo local '{LOCAL_PATH}' não foi encontrado. Certifique-se de que ele está na mesma pasta do script e que a imagem do banner também.")
