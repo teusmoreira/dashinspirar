@@ -41,7 +41,7 @@ def get_img_as_base64(file):
     except:
         return None
 
-logo_path = "logo-with-name-D8Yx5pPt.png"
+
 img_b64 = get_img_as_base64(logo_path)
 
 # Define o CSS da imagem apenas se ela existir
