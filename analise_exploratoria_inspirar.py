@@ -63,13 +63,12 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- CABEÇALHO (BANNER + TÍTULO COM ÍCONE) ---
+# --- CABEÇALHO (LOGOTIPO MENOR + TÍTULO) ---
 try:
-    # Imagem como banner no topo, ocupando toda a largura
-    # Certifique-se que o arquivo 'logo-with-name-D8Yx5pPt.png' está na mesma pasta
-    st.image("logo-with-name-D8Yx5pPt.png", use_column_width=True)
+    # AJUSTE AQUI: width=350 define um tamanho fixo em pixels.
+    # Altere este valor se quiser maior ou menor.
+    st.image("logo-with-name-D8Yx5pPt.png", width=350)
 except Exception as e:
-    # Se não achar a imagem, segue a vida sem quebrar o app
     pass
 
 # Título original com o emoji
