@@ -5,63 +5,101 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-# --- DEFINIÇÃO DA NOVA IDENTIDADE VISUAL (ROXO & BRANCO) ---
-# Cor principal (um roxo forte para contraste no branco)
-PRIMARY_PURPLE = "#6A0DAD" 
-# Cor secundária (um roxo mais claro para detalhes ou segunda categoria)
-SECONDARY_PURPLE = "#9B59B6"
+# --- 1. DEFINIÇÃO DAS CORES (Identidade Visual da Borboleta) ---
+PRIMARY_PURPLE = "#6A0DAD"   # Roxo Forte (Títulos e Textos)
+SECONDARY_PURPLE = "#9B59B6" # Roxo Médio (Detalhes)
+LIGHT_BG = "#FFFFFF"         # Branco Absoluto
 
-# Paleta monocromática (Correção aplicada aqui: usando light_palette)
-PURPLE_PALETTE = sns.light_palette(PRIMARY_PURPLE, n_colors=5, reverse=True, input="hex")
-
-# Configuração do Matplotlib para Fundo Branco e Texto Roxo
+# --- 2. CONFIGURAÇÃO DOS GRÁFICOS (Matplotlib/Seaborn) ---
+# Força fundo branco e textos roxos nos gráficos
 plt.rcParams.update({
-    "figure.facecolor":  "white",
-    "axes.facecolor":    "white",
-    "savefig.facecolor": "white",
-    # Mudando todos os textos e eixos para roxo
-    "text.color": PRIMARY_PURPLE,
-    "axes.labelcolor": PRIMARY_PURPLE,
-    "xtick.color": PRIMARY_PURPLE,
-    "ytick.color": PRIMARY_PURPLE,
-    "axes.edgecolor": PRIMARY_PURPLE,
-    "font.size": 10,
-    # Limpando as bordas dos gráficos para um visual mais "clean"
-    "axes.spines.top": False,
+    "figure.facecolor":  LIGHT_BG,
+    "axes.facecolor":    LIGHT_BG,
+    "savefig.facecolor": LIGHT_BG,
+    "text.color":        PRIMARY_PURPLE,
+    "axes.labelcolor":   PRIMARY_PURPLE,
+    "xtick.color":       PRIMARY_PURPLE,
+    "ytick.color":       PRIMARY_PURPLE,
+    "axes.edgecolor":    PRIMARY_PURPLE,
+    "font.size":         10,
+    "axes.spines.top":   False,
     "axes.spines.right": False,
 })
-# -------------------------------------------------------
 
-# --- Configuração da Página ---
+# Paleta de cores roxa para o Seaborn
+PURPLE_PALETTE = sns.light_palette(PRIMARY_PURPLE, n_colors=5, reverse=True, input="hex")
+
+# --- 3. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Dashboard Inspirar", layout="wide", initial_sidebar_state="expanded")
 
-# --- CSS CUSTOMIZADO PARA FORÇAR O TEMA BRANCO/ROXO NO STREAMLIT ---
+# --- 4. CSS AGRESSIVO (A Mágica acontece aqui) ---
+# Isso força o visual branco/roxo ignorando o tema do seu computador
 st.markdown(f"""
     <style>
-        /* Força fundo branco na aplicação principal e sidebar */
-        .stApp, section[data-testid="stSidebar"] {{
-            background-color: #FFFFFF;
+        /* 1. Força Fundo Branco em TUDO */
+        .stApp {{
+            background-color: {LIGHT_BG} !important;
         }}
-        /* Muda a cor de todos os títulos e textos principais para roxo */
-        h1, h2, h3, h4, p, span, label, .stDataFrame {{
+        
+        /* 2. Barra Superior (Header) Branca */
+        header[data-testid="stHeader"] {{
+            background-color: {LIGHT_BG} !important;
+        }}
+        
+        /* 3. Barra Lateral Branca */
+        section[data-testid="stSidebar"] {{
+            background-color: {LIGHT_BG} !important;
+            border-right: 1px solid #EEE;
+        }}
+
+        /* 4. Títulos e Textos em Roxo */
+        h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span {{
             color: {PRIMARY_PURPLE} !important;
         }}
-        /* Estiliza os cartões de métricas (KPIs) */
-        [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {{
-             color: {PRIMARY_PURPLE} !important;
+        
+        /* 5. Corrige textos dentro de botões e abas */
+        button {{
+            color: {PRIMARY_PURPLE} !important;
         }}
+        
+        /* 6. Estiliza as Abas (Tabs) */
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 10px;
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            color: {PRIMARY_PURPLE} !important;
+            background-color: white !important;
+        }}
+        .stTabs [aria-selected="true"] {{
+            border-bottom-color: {PRIMARY_PURPLE} !important;
+            font-weight: bold !important;
+        }}
+
+        /* 7. Estiliza os Cartões de Métricas (KPIs) */
         [data-testid="stMetric"] {{
-            background-color: #F8F0FF; /* Fundo roxo bem clarinho */
+            background-color: #F8F0FF !important; /* Roxo muito claro */
             border: 1px solid {SECONDARY_PURPLE};
             border-radius: 8px;
             padding: 10px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
         }}
-        /* Cor dos divisores (hr) */
-        hr {{
-            border-color: {SECONDARY_PURPLE};
+        [data-testid="stMetricLabel"] {{
+            color: {PRIMARY_PURPLE} !important;
+        }}
+        [data-testid="stMetricValue"] {{
+            color: {PRIMARY_PURPLE} !important;
+        }}
+        
+        /* 8. Upload de Arquivo */
+        [data-testid="stFileUploader"] {{
+            background-color: #F8F0FF;
+            border-radius: 10px;
+            padding: 10px;
         }}
     </style>
 """, unsafe_allow_html=True)
+
+# --- FIM DO CSS ---
 
 st.title("📊 Dashboard de Engajamento - App Inspirar")
 st.markdown("---") 
@@ -85,12 +123,12 @@ def load_data(file_input):
 
         pacientes = pd.json_normalize(data["data"]["result"])
         
-        # Tratamentos de dados
+        # Tratamentos
         pacientes["createdAt"] = pd.to_datetime(pacientes["createdAt"], errors="coerce")
         pacientes["height"] = pd.to_numeric(pacientes["height"], errors='coerce')
         pacientes["height"] = np.where(pacientes["height"] > 3, pacientes["height"] / 100, pacientes["height"])
         
-        # Cálculos de Scores
+        # Scores
         pacientes["n_symptoms"] = pacientes["symptomDiaries"].apply(len)
         pacientes["n_acqs"] = pacientes["acqs"].apply(len)
         pacientes["n_prescriptions"] = pacientes["prescriptions"].apply(len)
@@ -98,7 +136,6 @@ def load_data(file_input):
         pacientes["engagement_score"] = (pacientes["n_symptoms"] + pacientes["n_acqs"] + 
                                          pacientes["n_prescriptions"] + pacientes["n_activity_logs"])
         
-        # IMC
         pacientes["bmi"] = pacientes["weight"] / (pacientes["height"] ** 2)
         return pacientes
     except Exception as e:
@@ -122,7 +159,6 @@ if df is not None:
     
     total_pacientes = len(df)
     ativos = df[df["engagement_score"] > 0].copy()
-    
     pct_ativos = (len(ativos) / total_pacientes * 100) if total_pacientes > 0 else 0
 
     col1.metric("👥 Total de Pacientes", total_pacientes)
@@ -140,18 +176,16 @@ if df is not None:
         with c1:
             st.markdown("##### Distribuição de Interações")
             fig1 = plt.figure(figsize=(8, 4))
-            # Mudança de cor para o roxo principal
             sns.histplot(df["engagement_score"], bins=20, color=PRIMARY_PURPLE, kde=True)
             plt.xlabel("Total Interações")
             plt.ylabel("Qtd Pacientes")
             sns.despine()
-            st.pyplot(fig1, transparent=False) 
+            st.pyplot(fig1, transparent=False)
         with c2:
             st.markdown("##### Volume por Funcionalidade")
             tipos = df[["n_symptoms", "n_acqs", "n_prescriptions", "n_activity_logs"]].sum()
             tipos_df = pd.DataFrame({"Func": ["Sintomas", "ACQ", "Meds", "Ativ."], "Total": tipos.values}).sort_values("Total", ascending=False)
             fig2 = plt.figure(figsize=(8, 4))
-            # Usando cor única roxa
             sns.barplot(data=tipos_df, x="Func", y="Total", color=PRIMARY_PURPLE)
             plt.ylabel("Registros")
             sns.despine()
@@ -234,7 +268,6 @@ if df is not None:
             with c_E:
                 st.markdown("##### Mensal")
                 fig6 = plt.figure(figsize=(8, 4))
-                # Usando paleta monocromática corrigida
                 sns.lineplot(data=df_l.groupby(['Mês', 'Func']).size().reset_index(name='T'), x='Mês', y='T', hue='Func', marker='o', palette=PURPLE_PALETTE)
                 plt.grid(axis='y', alpha=0.3, linestyle='--', color=SECONDARY_PURPLE)
                 sns.despine()
