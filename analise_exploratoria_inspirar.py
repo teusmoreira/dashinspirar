@@ -64,8 +64,6 @@ def load_data(file_input):
     except Exception as e:
         return None
 
-
-
 raw_df = None
 if uploaded_file is not None:
     raw_df = load_data(uploaded_file)
@@ -101,7 +99,6 @@ if raw_df is not None:
         df = raw_df.loc[mask].copy()
     else:
         df = raw_df.copy()
-
 # --- CONSTRUÇÃO DO DASHBOARD ---
 if df is not None:
     # KPI Section
