@@ -23,6 +23,7 @@ st.set_page_config(page_title="Dashboard Inspirar", layout="wide", initial_sideb
 PRIMARY_PURPLE = "#6A0DAD"
 SECONDARY_PURPLE = "#9B59B6"
 LIGHT_BG = "#FFFFFF"
+WHITE_TEXT = "#FFFFFF" # Nova cor para o texto dentro do gráfico
 
 # --- 4. CONFIGURAÇÃO DOS GRÁFICOS ---
 plt.rcParams.update({
@@ -52,7 +53,7 @@ if img_b64:
         background-image: url("data:image/png;base64,{img_b64}");
         background-repeat: no-repeat;
         background-position: center center;
-        background-size: auto 90%; /* AUMENTADO PARA 90% (Era 60%) */
+        background-size: auto 90%;
         background-color: {LIGHT_BG} !important;
     }}
     """
@@ -60,28 +61,23 @@ if img_b64:
 # --- 6. CSS GERAL ---
 st.markdown(f"""
     <style>
-        /* Aplica o logo no cabeçalho */
         {header_bg_css}
         
         .stApp {{ background-color: {LIGHT_BG} !important; }}
         
-        /* Ajusta o espaço para o conteúdo não ficar escondido */
         .block-container {{
             padding-top: 3rem !important; 
         }}
 
         [data-testid="collapsedControl"] {{ display: none; }}
         
-        /* Cores dos Textos */
         h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, div, span, button {{ 
             color: {PRIMARY_PURPLE} !important; 
         }}
         
-        /* Abas */
         .stTabs [data-baseweb="tab"] {{ color: {PRIMARY_PURPLE} !important; background-color: white !important; }}
         .stTabs [aria-selected="true"] {{ border-bottom-color: {PRIMARY_PURPLE} !important; font-weight: bold !important; }}
         
-        /* Métricas (Cards) */
         [data-testid="stMetric"] {{ 
             background-color: #F8F0FF !important; 
             border: 1px solid {SECONDARY_PURPLE}; 
@@ -95,7 +91,7 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 7. TÍTULO RESTAURADO ---
+# --- 7. TÍTULO ---
 st.title("📊 Dashboard de Engajamento - App Inspirar")
 st.markdown("---") 
 
@@ -200,7 +196,15 @@ if df is not None:
                     st.markdown("**Proporção**")
                     fig_p = plt.figure(figsize=(4, 4))
                     colors = [PRIMARY_PURPLE, SECONDARY_PURPLE]
-                    plt.pie(total_sexo["engagement_score"], labels=total_sexo["sex_label"], autopct='%1.0f%%', colors=colors, wedgeprops={'edgecolor': 'white'})
+                    # --- CORREÇÃO AQUI ---
+                    # Adicionado textprops para mudar cor, peso e tamanho da fonte da porcentagem
+                    plt.pie(total_sexo["engagement_score"], 
+                            labels=total_sexo["sex_label"], 
+                            autopct='%1.0f%%', 
+                            colors=colors, 
+                            wedgeprops={'edgecolor': 'white'},
+                            textprops={'color': WHITE_TEXT, 'weight': 'bold', 'fontsize': 12}) 
+                    # ---------------------
                     fig_p.gca().add_artist(plt.Circle((0,0),0.6,fc='white'))
                     st.pyplot(fig_p, transparent=False)
                 with c3:
