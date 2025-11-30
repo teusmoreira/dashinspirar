@@ -7,15 +7,24 @@ import numpy as np
 import base64
 import os
 
-# --- 1. CONFIGURAÇÃO DA PÁGINA ---
+# --- 1. FUNÇÃO AUXILIAR (DEFINIDA PRIMEIRO PARA EVITAR ERRO) ---
+def get_img_as_base64(file):
+    try:
+        with open(file, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except:
+        return None
+
+# --- 2. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Dashboard Inspirar", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. DEFINIÇÃO DAS CORES ---
+# --- 3. DEFINIÇÃO DAS CORES ---
 PRIMARY_PURPLE = "#6A0DAD"
 SECONDARY_PURPLE = "#9B59B6"
 LIGHT_BG = "#FFFFFF"
 
-# --- 3. CONFIGURAÇÃO DOS GRÁFICOS ---
+# --- 4. CONFIGURAÇÃO DOS GRÁFICOS ---
 plt.rcParams.update({
     "figure.facecolor":  LIGHT_BG,
     "axes.facecolor":    LIGHT_BG,
@@ -32,17 +41,9 @@ plt.rcParams.update({
 
 PURPLE_PALETTE = sns.light_palette(PRIMARY_PURPLE, n_colors=5, reverse=True, input="hex")
 
-# --- 4. PREPARAÇÃO DA IMAGEM PARA O CSS ---
-def get_img_as_base64(file):
-    try:
-        with open(file, "rb") as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-    except:
-        return None
-
-
-img_b64 = get_img_as_base64(logo_path)
+# --- 5. PREPARAÇÃO DA IMAGEM PARA O CSS ---
+logo_path = "logo-with-name-D8Yx5pPt.png"
+img_b64 = get_img_as_base64(logo_path) # Agora a função já existe!
 
 # Define o CSS da imagem apenas se ela existir
 header_bg_css = ""
@@ -51,13 +52,13 @@ if img_b64:
     header[data-testid="stHeader"] {{
         background-image: url("data:image/png;base64,{img_b64}");
         background-repeat: no-repeat;
-        background-position: center center; /* Centraliza a logo no cabeçalho */
-        background-size: auto 60%; /* Ajusta o tamanho (60% da altura da barra) */
+        background-position: center center;
+        background-size: auto 60%;
         background-color: {LIGHT_BG} !important;
     }}
     """
 
-# --- 5. CSS GERAL + INJEÇÃO DO LOGO NO HEADER ---
+# --- 6. CSS GERAL ---
 st.markdown(f"""
     <style>
         /* Aplica o fundo e o logo na barra superior */
@@ -79,7 +80,7 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 6. CARREGAMENTO DE DADOS ---
+# --- 7. CARREGAMENTO DE DADOS ---
 LOCAL_PATH = "pacientes_marco-julho_com_createdAt_com_sexo_sigla_filtrado.json"
 
 @st.cache_data
@@ -113,14 +114,13 @@ if os.path.exists(LOCAL_PATH):
 
 # --- VISUALIZAÇÃO ---
 if df is not None:
-    # Removemos o título daqui porque ele agora é a imagem no header
     
     col1, col2, col3 = st.columns(3)
     total_pacientes = len(df)
     ativos = df[df["engagement_score"] > 0].copy()
     pct_ativos = (len(ativos) / total_pacientes * 100) if total_pacientes > 0 else 0
 
-    col1.metric("👥 Totl de Pacientes", total_pacientes)
+    col1.metric("👥 Total de Pacientes", total_pacientes)
     col2.metric("✅ Pacientes Ativos", len(ativos))
     col3.metric("📈 Engajamento", f"{pct_ativos:.1f}%")
 
